@@ -61,6 +61,25 @@ the udev rule.
 The service runs as root: registering GATT services and a pairing agent with
 BlueZ over the system bus needs it, and so does the ANT+ USB reset.
 
+### Configuration web UI
+
+The installer also enables `freefitness-web.service`, a standard-library HTTP
+server on port 8080 (`web/server.py`) for changing the bike ID and the output
+protocol from a phone at the gym:
+
+```
+http://<pi-hostname>.local:8080/
+```
+
+It rewrites the `FREEFITNESS_ARGS` line of `/etc/default/freefitness` and
+restarts the bridge, so the CLI stays the source of truth and the two paths
+cannot drift. It also scans for nearby Keiser bikes and lists their IDs with
+live cadence, which is how you tell two bikes apart, and tails the journal.
+
+Being unauthenticated and able to restart a root service, it belongs on a
+trusted LAN only; disable it with
+`sudo systemctl disable --now freefitness-web`.
+
 ### Choosing an output protocol on a Pi
 
 With BLE output the Pi's single controller has to scan the Keiser (central) and

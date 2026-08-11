@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Installed to /etc/systemd/system/freefitness-web.service by install-rpi.sh,
+# which substitutes @LINUX_DIR@ and @VENV_DIR@ with the real paths.
+[Unit]
+Description=FreeFitness configuration web UI
+Documentation=https://github.com/tao-j/FreeFitness
+After=network.target
+
+[Service]
+Type=simple
+# Root is required to rewrite /etc/default/freefitness and to restart the
+# bridge service. The listener is unauthenticated: keep it on a trusted LAN.
+User=root
+WorkingDirectory=@LINUX_DIR@/web
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@VENV_DIR@/bin/python server.py --port 8080
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

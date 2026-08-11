@@ -38,12 +38,18 @@ fi
 echo "==> Installing system packages"
 apt-get update -qq
 apt-get install -y --no-install-recommends \
-    bluez libusb-1.0-0 python3-venv python3-dev
+    bluez libusb-1.0-0 python3-venv python3-dev git
 
 echo "==> Creating virtualenv at $VENV_DIR"
 "$PYTHON" -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --upgrade -q pip
 "$VENV_DIR/bin/pip" install -q -r "$REPO_ROOT/requirements.txt"
+
+echo "==> Enabling Bluetooth"
+# Raspberry Pi OS Lite leaves the controller soft-blocked and the service
+# disabled, which surfaces as "No powered Bluetooth adapters found".
+command -v rfkill >/dev/null && rfkill unblock bluetooth || true
+systemctl enable --now bluetooth || true
 
 echo "==> Installing ANT+ udev rule"
 install -m 0644 "$DEPLOY_DIR/99-ant-usb.rules" "$UDEV_FILE"

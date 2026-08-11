@@ -3,7 +3,7 @@
 # which substitutes @LINUX_DIR@ and @VENV_DIR@ with the real paths.
 [Unit]
 Description=FreeFitness bike data bridge
-Documentation=https://github.com/tao-j/FreeFitness
+Documentation=https://github.com/solufi/keiserTOgarmin
 # BLE output needs a registered BlueZ adapter on the system bus.
 Requires=bluetooth.service
 After=bluetooth.service network.target

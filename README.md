@@ -1,67 +1,95 @@
-# FreeFitness Data Adapter
+# keiserTOgarmin
 
-A bridge to connect fitness equipment with sports watches and apps, converting raw data from various sources into required formats using scientific estimations to ensure maximum accuracy.
+Un Raspberry Pi qui écoute un vélo **Keiser M3i** et le retransmet à une montre
+**Garmin** (Forerunner, Fenix…) comme un capteur de puissance standard.
 
-## Features
-- **Multi-Source**: Connect to Keiser M3i bikes, any BLE **Cycling Power (CP)** sensor (smart trainers, power meters, third-party bikes), or run a built-in simulator for testing.
-- **Unified Sensor Picker**: One on-device scan, two filters — Keiser M3 advertisements and Cycling Power services land in the same list with type tags. Pick a bike, the firmware dispatches to the right strategy automatically.
-- **Dual-Protocol Output**: Re-transmit data via **Bluetooth** (specifically **Bluetooth Low Energy** or **BLE**) and **ANT+**.
-- **Cross-Platform Support**: Compatible with Garmin, Apple Watch, Zwift, and various fitness apps.
-- **Hardware Agnostic**: Available as either a dedicated **Microcontroller Unit (MCU)** device or a Linux/SBC solution.
+```
+Keiser M3i  ──BLE──►  Raspberry Pi  ──BLE ou ANT+──►  Montre Garmin
+```
 
-*Feel free to request other bikes or apps you'd like us to test for compatibility!*
+La montre enregistre puissance, cadence, vitesse et distance dans l'activité,
+comme avec un vrai capteur. Rien à installer sur la montre.
 
+## Ce qu'il te faut
 
----
+- Un Raspberry Pi (Pi 4, Pi 3 ou Zero 2 W) avec **Raspberry Pi OS Bookworm ou
+  plus récent**, 64-bit — la version Lite suffit. Les versions plus anciennes
+  livrent un Python trop vieux et ne fonctionnent pas.
+- Un vélo Keiser M3i (console allumée).
+- *Optionnel :* un **Garmin USB ANT Stick** (réf. `010-01058-00`) pour la
+  liaison ANT+, plus fiable que le Bluetooth. Les dongles CYCPLUS ne
+  fonctionnent pas.
 
-## Solutions
+## Installation
 
-The project is implemented in two distinct ways depending on available hardware and user needs:
+```bash
+sudo apt update && sudo apt install -y git
+git clone https://github.com/solufi/keiserTOgarmin.git
+cd keiserTOgarmin
+sudo ./linux/deploy/install-rpi.sh
+```
 
-### 1. MCU Solution
-A portable, low-cost and low-power solution designed for ESP32 or nRF52 based hardware that's easier to carry around. See the [MCU README](mcu/README.md).
+Le script installe tout (dépendances, environnement Python, service au
+démarrage, règle USB pour l'ANT+) et lance l'interface de configuration.
 
-### 2. Linux Solution
-A Python-based implementation for running on Linux. See the [Linux README](linux/README.md).
+## Configuration
 
----
+Depuis un téléphone ou un PC sur le même réseau :
 
-## Compatibility
+```
+http://<nom-du-pi>.local:8080/
+```
 
-| Feature / Platform | Apple Watch | Garmin | Zwift (iOS) | Zwift (Android) |
-| :--- | :---: | :---: | :---: | :---: |
-| **Power w/ Cadence and Speed (Bluetooth)** | 👍 | 👍 | 👍 | 👍 |
-| **Cadence and Speed (Bluetooth)** | ✅ | ✅ | ✅ | ✅ |
-| **Power w/ Cadence (ANT+)** | ➖ | ✅  | ➖ | ➖ |
-| **Speed (ANT+)** | ➖ | ✅ | ➖ | ➖ |
+1. **Cherche les vélos** et pédale : le tien est celui dont la cadence bouge.
+   Note son *Bike ID*.
+2. Saisis ce Bike ID.
+3. Choisis la sortie :
+   - **Bluetooth — capteur de puissance seul** : sans rien acheter. La montre
+     ne verra qu'un capteur, ce qui suffit.
+   - **ANT+** : nécessite le dongle USB. Plus stable, et plusieurs appareils
+     peuvent capter en même temps.
+4. **Enregistrer et redémarrer**.
 
-*Note: 👍 Recommended | ✅ Tested Working | ➖ Don't bother*
+Le journal en bas de page doit défiler dès que tu pédales.
 
-### Platform Specific Notes
+## Appairer la montre
 
-### Apple watchOS 10+
-**Bluetooth**: Just use the default wheel size 700x25mm.
+Ce n'est **pas** un home trainer : ce sont des capteurs. Sur la montre :
+*Paramètres → Capteurs et accessoires → Ajouter*.
 
-### Garmin
-**Fenix 7**: 
-- Bluetooth: Search for PWR sensor, Bluetooth device should only advertise Cycle Power not Cycling Speed and Cadence. 
-- ANT+: Search and connect the PWR and SPD sensors separately. 
-In both cases, set the wheel size to be 2096mm (700x25mm).
+- **En Bluetooth** : ajoute un *capteur de puissance*, nommé
+  `Keiser M to GATT`.
+- **En ANT+** : ajoute **PWR**, puis séparément **SPD**.
 
-### Zwift
-Bluetooth: Connect the speed and power source to the same BLE device discovered.
+Dans les deux cas, règle la **circonférence de roue à 2096 mm**. L'appairage ne
+se fait qu'une fois ; ensuite la montre retrouve les capteurs toute seule.
 
-### Samsung Galaxy Watch 8
-First add Workout to the Health App on phone. Then go to Bike Workout on watch inside the Health App. However, there is no "Accessories" option to add a sensor. 
+Ensuite, il n'y a plus rien à faire : le Pi démarre le pont automatiquement au
+boot. Tu le branches, tu attends une trentaine de secondes, tu pédales.
 
-## Design & Development
-For technical documentation on protocol mappings, data structures, and internal logic, see [DEVELOPMENT.md](DEVELOPMENT.md).
+## Aller plus loin
 
-## License
-Copyright (C) 2023-2026 Tao Jin.
+- [`docs/GUIDE-Pi4-Forerunner955.md`](docs/GUIDE-Pi4-Forerunner955.md) — guide
+  pas-à-pas complet, choix Bluetooth vs ANT+, et tableau de dépannage.
+- [`linux/README.md`](linux/README.md) — options en ligne de commande,
+  fonctionnement interne, détails des protocoles.
+- [`DEVELOPMENT.md`](DEVELOPMENT.md) — encodage des trames BLE/ANT+ et
+  architecture du code.
 
-FreeFitness is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU General Public License as published by the Free Software Foundation. See [LICENSE](LICENSE) for the full text.
+Bon à savoir : le Keiser transmet la puissance et la cadence, mais pas la
+vitesse. Celle-ci est calculée à partir de la puissance par un modèle physique,
+donc elle est plausible mais pas exacte.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+## Origine et licence
 
-Third-party components retain their own licenses (NimBLE-Arduino: Apache-2.0; M5Unified/M5GFX: MIT; ant-arduino / antplus-arduino: MIT; Arduino-ESP32: Apache-2.0 / LGPL)
+Ce dépôt est dérivé de [FreeFitness](https://github.com/tao-j/FreeFitness) de
+Tao Jin, réduit et adapté au cas Keiser M3i → Garmin sur Raspberry Pi. Le
+dossier `mcu/` conserve le firmware ESP32 du projet d'origine ; il n'est pas
+utilisé ici.
+
+Copyright (C) 2023-2026 Tao Jin. Logiciel libre sous licence GNU GPL version 3 —
+voir [LICENSE](LICENSE). Distribué sans aucune garantie.
+
+Les composants tiers gardent leur propre licence (NimBLE-Arduino : Apache-2.0 ;
+M5Unified/M5GFX : MIT ; ant-arduino / antplus-arduino : MIT ; Arduino-ESP32 :
+Apache-2.0 / LGPL).

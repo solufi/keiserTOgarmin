@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Garmin/Dynastream ANT+ USB sticks. Product IDs match the ones probed by
+# linux/tx/ant.py: 0x1008 (ANTUSB2) and 0x1009 (ANTUSB-m, sold as Garmin
+# USB ANT Stick 010-01058-00).
+SUBSYSTEM=="usb", ATTR{idVendor}=="0fcf", ATTR{idProduct}=="1008", MODE="0664", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0fcf", ATTR{idProduct}=="1009", MODE="0664", GROUP="plugdev", TAG+="uaccess"

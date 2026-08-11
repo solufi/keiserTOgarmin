@@ -37,7 +37,25 @@ Le script installe `bluez`, `libusb`, crée un virtualenv `.venv`, installe la
 règle udev du dongle ANT+ et enregistre le service systemd (activé au
 démarrage, mais pas encore lancé).
 
-## 2. Trouver le Bike ID de ton vélo
+## 2. Tout configurer depuis un navigateur (le plus simple)
+
+L'installeur démarre aussi une petite interface web. Depuis ton téléphone ou
+ton PC sur le même réseau :
+
+```
+http://<nom-du-pi>.local:8080/     (ex. http://keiser.local:8080/)
+```
+
+Elle permet de saisir le bike ID, de chercher les vélos autour, de choisir
+Bluetooth ou ANT+, de démarrer/arrêter le pont et de lire le journal. Elle
+écrit exactement le même fichier que les étapes 3 et 4 ci-dessous — celles-ci
+restent valables si tu préfères la ligne de commande.
+
+L'interface n'a aucun mot de passe et peut redémarrer un service root : à
+n'exposer que sur un réseau de confiance. Pour la désactiver :
+`sudo systemctl disable --now freefitness-web`.
+
+## 3. Trouver le Bike ID de ton vélo
 
 Il s'affiche sur la console du Keiser M3i. En cas de doute, écoute ce qui passe
 autour de toi :
@@ -58,7 +76,7 @@ asyncio.run(m())
 
 Pédale sur le vélo qui t'intéresse : c'est celui dont la cadence bouge.
 
-## 3. Configurer et démarrer
+## 4. Configurer et démarrer
 
 ```bash
 sudo nano /etc/default/freefitness
@@ -87,7 +105,7 @@ Dès que tu pédales, tu dois voir défiler `BLE 2A63 CP | pwr 143 W | ...` (ou
 `ANT 0x10 PWR | ...`). Si tu vois `No data` en boucle, le Pi n'entend pas le
 vélo : mauvais bike ID, ou trop loin.
 
-## 4a. Apparier en Bluetooth
+## 5a. Apparier en Bluetooth
 
 Un seul capteur à ajouter : le profil Cycling Power transporte puissance,
 cadence **et** tours de roue. `--ble-profiles cp` masque le profil CSC, que les
@@ -99,7 +117,7 @@ puissance**. Le pont apparaît sous le nom `Keiser M to GATT`. Règle ensuite la
 fausses — la vitesse est déduite de la puissance par un modèle physique, pas
 mesurée.
 
-## 4b. Apparier en ANT+
+## 5b. Apparier en ANT+
 
 Ce ne sont **pas** des home trainers, ce sont deux capteurs distincts. Sur la
 montre : **Paramètres → Capteurs et accessoires → Ajouter**, puis :
@@ -111,7 +129,7 @@ montre : **Paramètres → Capteurs et accessoires → Ajouter**, puis :
 Une fois appariés, la montre les retrouve automatiquement aux séances
 suivantes.
 
-## 5. Usage courant
+## 6. Usage courant
 
 Rien à reconfigurer : le service démarre au boot et se relance seul en cas de
 plantage. Tu branches le Pi, tu attends ~30 s, tu lances la séance vélo sur la
@@ -121,7 +139,7 @@ Seul cas nécessitant une intervention : changer de vélo dans la salle (bike ID
 différent) → édite `/etc/default/freefitness` et
 `sudo systemctl restart freefitness`.
 
-## 6. Dépannage
+## 7. Dépannage
 
 | Symptôme | Piste |
 |---|---|

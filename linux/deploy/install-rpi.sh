@@ -20,7 +20,7 @@ DEPLOY_DIR="$LINUX_DIR/deploy"
 VENV_DIR="$REPO_ROOT/.venv"
 PYTHON="${PYTHON:-python3}"
 DEFAULTS_FILE="/etc/default/freefitness"
-UNIT_FILE="/etc/systemd/system/freefitness.service"
+UNIT_DIR="/etc/systemd/system"
 UDEV_FILE="/etc/udev/rules.d/99-ant-usb.rules"
 
 if [[ $EUID -ne 0 ]]; then
@@ -64,16 +64,20 @@ if [[ $INSTALL_SERVICE -eq 1 ]]; then
         install -m 0644 "$DEPLOY_DIR/freefitness.default" "$DEFAULTS_FILE"
     fi
 
-    echo "==> Installing systemd unit"
-    sed -e "s|@LINUX_DIR@|$LINUX_DIR|g" \
-        -e "s|@VENV_DIR@|$VENV_DIR|g" \
-        "$DEPLOY_DIR/freefitness.service.in" > "$UNIT_FILE"
-    chmod 0644 "$UNIT_FILE"
+    echo "==> Installing systemd units"
+    for template in freefitness.service freefitness-web.service; do
+        sed -e "s|@LINUX_DIR@|$LINUX_DIR|g" \
+            -e "s|@VENV_DIR@|$VENV_DIR|g" \
+            "$DEPLOY_DIR/$template.in" > "$UNIT_DIR/$template"
+        chmod 0644 "$UNIT_DIR/$template"
+    done
     systemctl daemon-reload
     systemctl enable freefitness.service
+    systemctl enable --now freefitness-web.service
     echo
-    echo "Service installed but not started. Edit $DEFAULTS_FILE to set your"
-    echo "bike ID and protocols, then run:  sudo systemctl start freefitness"
+    echo "Bridge installed but not started. Configure it from a browser at"
+    echo "    http://$(hostname).local:8080/   (or http://<pi-ip>:8080/)"
+    echo "or edit $DEFAULTS_FILE by hand, then:  sudo systemctl start freefitness"
 fi
 
 cat <<EOF

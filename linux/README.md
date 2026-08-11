@@ -34,12 +34,65 @@ Keiser M series BLE broadcast is public ([spec](https://dev.keiser.com/mseries/d
 ### Simulation
 Includes a mock source for testing without a physical bike.
 
+## Raspberry Pi deployment
+
+`linux/deploy/` contains an installer that turns a Pi (or any Debian-based SBC)
+into an appliance: dependencies in a virtualenv, a systemd unit that survives
+reboots, and a udev rule for the ANT+ stick.
+
+```bash
+git clone https://github.com/tao-j/FreeFitness.git
+cd FreeFitness
+sudo ./linux/deploy/install-rpi.sh
+```
+
+Then set the arguments in `/etc/default/freefitness` and start it:
+
+```bash
+FREEFITNESS_ARGS="--bike-id 12 --protocols ant"
+sudo systemctl start freefitness
+journalctl -u freefitness -f
+```
+
+The installer defaults to `--mock --protocols ble`, so a fresh install can be
+verified without a bike. Pass `--no-service` to install only the virtualenv and
+the udev rule.
+
+The service runs as root: registering GATT services and a pairing agent with
+BlueZ over the system bus needs it, and so does the ANT+ USB reset.
+
+### Choosing an output protocol on a Pi
+
+With BLE output the Pi's single controller has to scan the Keiser (central) and
+advertise to the watch (peripheral) at the same time, which is where BlueZ is
+least reliable. Two ways to avoid the conflict:
+
+- **ANT+ output** — the radio then does one job each: built-in BLE scans, the
+  USB stick transmits. Works with Garmin head units and watches.
+- **A second BLE USB dongle** — note that `tx/ble.py` advertises on
+  `Adapter.get_first()`, so adapter selection currently depends on enumeration
+  order rather than being configurable.
+
+### Selecting BLE profiles
+
+`--ble-profiles` picks which GATT services are registered and advertised:
+
+```bash
+python main.py --bike-id 12 --protocols ble --ble-profiles cp
+```
+
+Garmin watches expect a power sensor to advertise Cycling Power *alone* — with
+CSC also present the PWR search may not bind. CP carries power, cadence and
+wheel data, so nothing is lost; the watch derives speed from the wheel
+revolutions (set the wheel size to 2096 mm). Leave the default `cp,csc` for
+Apple Watch and Zwift.
+
 ## Data Transmission Details
 
 ### ANT+
 Requires an ANT+ transceiver:
-- `ANT-USB`
-- `ANT-USBm` (based on nRF24L01P?)
+- `ANT-USB` (USB `0fcf:1008`)
+- `ANT-USBm` (based on nRF24L01P?) — USB `0fcf:1009`, sold as Garmin USB ANT Stick `010-01058-00`
 - Other transceivers supporting ANT+ Tx (may need serial driver changes).
 
 *Note: CYCPLUS branded dongles are reported not to work.*

@@ -1,17 +1,28 @@
-# Keiser M3i → Raspberry Pi 4 → Forerunner 955 (ANT+)
+# Keiser M3i → Raspberry Pi 4 → Forerunner 955
 
-Guide taillé pour ta configuration exacte. Compte 30 minutes, dont 20 d'attente.
+Guide taillé pour cette configuration exacte. Compte 30 minutes, dont 20
+d'attente.
+
+Deux chemins, selon le matériel disponible :
+
+| | Bluetooth (§4a) | ANT+ (§4b) |
+|---|---|---|
+| Matériel | rien de plus que le Pi | dongle USB ANT+ |
+| Capteurs sur la montre | 1 (PWR) | 2 (PWR + SPD) |
+| Risque | la radio du Pi scanne *et* annonce en même temps — point faible de BlueZ | aucun conflit, chaque radio a un rôle |
+
+Commence par le Bluetooth : c'est gratuit et immédiat. Si la 955 refuse de se
+connecter ou décroche, passe à l'ANT+.
 
 ## 0. Matériel
 
 - Raspberry Pi 4 (déjà en stock) + microSD + alim USB-C
-- Garmin USB ANT Stick réf. **010-01058-00** (= ANTUSB-m, USB `0fcf:1009`)
+- *Optionnel :* Garmin USB ANT Stick réf. **010-01058-00** (= ANTUSB-m, USB `0fcf:1009`)
 - **Système : Raspberry Pi OS Bookworm ou plus récent.** Obligatoire : le code
   utilise `asyncio.TaskGroup`, apparu en Python 3.11. Bullseye (Python 3.9)
   échoue au démarrage. L'installeur vérifie la version et refuse de continuer.
 
-Aucun dongle Bluetooth supplémentaire : en sortie ANT+, la radio BLE du Pi ne
-fait qu'écouter le Keiser, donc pas de conflit de rôles.
+Aucun dongle Bluetooth supplémentaire n'est nécessaire dans les deux cas.
 
 ## 1. Installation sur le Pi
 
@@ -53,7 +64,13 @@ Pédale sur le vélo qui t'intéresse : c'est celui dont la cadence bouge.
 sudo nano /etc/default/freefitness
 ```
 
-Remplace la ligne par (avec ton numéro) :
+Remplace la ligne par (avec ton numéro), **sans dongle ANT+** :
+
+```
+FREEFITNESS_ARGS="--bike-id 12 --protocols ble --ble-profiles cp"
+```
+
+Ou, **avec le dongle ANT+** :
 
 ```
 FREEFITNESS_ARGS="--bike-id 12 --protocols ant"
@@ -66,20 +83,30 @@ sudo systemctl start freefitness
 journalctl -u freefitness -f
 ```
 
-Tu dois voir défiler des lignes `ANT 0x10 PWR | evcnt ... | pwr 143 W | cad 70 rpm`
-dès que tu pédales. Si tu vois `ANT: No data`, le Pi n'entend pas le vélo :
-mauvais bike ID, ou trop loin.
+Dès que tu pédales, tu dois voir défiler `BLE 2A63 CP | pwr 143 W | ...` (ou
+`ANT 0x10 PWR | ...`). Si tu vois `No data` en boucle, le Pi n'entend pas le
+vélo : mauvais bike ID, ou trop loin.
 
-## 4. Apparier la Forerunner 955
+## 4a. Apparier en Bluetooth
+
+Un seul capteur à ajouter : le profil Cycling Power transporte puissance,
+cadence **et** tours de roue. `--ble-profiles cp` masque le profil CSC, que les
+Garmin digèrent mal quand il accompagne le CP.
+
+Sur la montre : **Paramètres → Capteurs et accessoires → Ajouter → Capteur de
+puissance**. Le pont apparaît sous le nom `Keiser M to GATT`. Règle ensuite la
+**circonférence de roue à 2096 mm** (700x25c), sinon vitesse et distance sont
+fausses — la vitesse est déduite de la puissance par un modèle physique, pas
+mesurée.
+
+## 4b. Apparier en ANT+
 
 Ce ne sont **pas** des home trainers, ce sont deux capteurs distincts. Sur la
 montre : **Paramètres → Capteurs et accessoires → Ajouter**, puis :
 
 1. Cherche **PWR** (capteur de puissance) → apparier.
 2. Reviens dans Ajouter, cherche **SPD** (capteur de vitesse) → apparier.
-3. Sur le capteur de vitesse, règle la **circonférence de roue à 2096 mm**
-   (700x25c). Sans ça, vitesse et distance sont fausses — la vitesse est
-   déduite de la puissance par un modèle physique, pas mesurée.
+3. Sur le capteur de vitesse, règle la **circonférence de roue à 2096 mm**.
 
 Une fois appariés, la montre les retrouve automatiquement aux séances
 suivantes.
@@ -101,6 +128,8 @@ différent) → édite `/etc/default/freefitness` et
 | `No ANT devices available` | Dongle mal détecté : `lsusb \| grep 0fcf` doit montrer `1008` ou `1009`. Débranche/rebranche après l'install (la règle udev ne s'applique qu'à la connexion). |
 | `ANT: No data` en boucle | Mauvais bike ID (étape 2), ou le Pi est trop loin du vélo. |
 | La montre ne trouve rien | Vérifie que le journal affiche bien des trames PWR. La montre doit chercher un capteur, pas un home trainer. |
+| En BLE : la montre voit le capteur puis décroche | C'est le conflit scan/annonce sur une seule radio. Bascule sur l'ANT+, ou ajoute un 2e dongle BLE. |
+| En BLE : rien n'apparaît du tout | Vérifie `--ble-profiles cp` (sans le CSC) et que `systemctl is-active bluetooth` répond `active`. |
 | Vitesse/distance farfelues | Circonférence de roue ≠ 2096 mm. |
 | Le service échoue au boot | `journalctl -u freefitness -b` ; si l'erreur mentionne Python 3.9/3.10, ton OS est trop vieux (Bookworm requis). |
 

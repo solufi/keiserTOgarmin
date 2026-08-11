@@ -73,6 +73,20 @@ least reliable. Two ways to avoid the conflict:
   `Adapter.get_first()`, so adapter selection currently depends on enumeration
   order rather than being configurable.
 
+### Selecting BLE profiles
+
+`--ble-profiles` picks which GATT services are registered and advertised:
+
+```bash
+python main.py --bike-id 12 --protocols ble --ble-profiles cp
+```
+
+Garmin watches expect a power sensor to advertise Cycling Power *alone* — with
+CSC also present the PWR search may not bind. CP carries power, cadence and
+wheel data, so nothing is lost; the watch derives speed from the wheel
+revolutions (set the wheel size to 2096 mm). Leave the default `cp,csc` for
+Apple Watch and Zwift.
+
 ## Data Transmission Details
 
 ### ANT+

@@ -25,6 +25,13 @@ def parse_args():
         help="Use simulated power data instead of real bike",
     )
     parser.add_argument(
+        "--ble-profiles",
+        type=str,
+        default="cp,csc",
+        help="Comma-separated BLE GATT profiles to expose (cp,csc). Garmin watches"
+        " want a power sensor to advertise cp alone. Default: cp,csc",
+    )
+    parser.add_argument(
         "--ant-driver",
         type=str,
         default="usb2",
@@ -34,7 +41,13 @@ def parse_args():
     return parser.parse_args()
 
 
-async def main(bike_id: int, protocols: list[str], mock: bool, ant_driver: str):
+async def main(
+    bike_id: int,
+    protocols: list[str],
+    mock: bool,
+    ant_driver: str,
+    ble_profiles: list[str],
+):
     tasks = []
 
     # Import and initialize bike source
@@ -62,7 +75,7 @@ async def main(bike_id: int, protocols: list[str], mock: bool, ant_driver: str):
         from tx.ble import BLETx
         from tx.encoder import BLEEncoder
 
-        ble_tx = BLETx()
+        ble_tx = BLETx(profiles=ble_profiles)
         await ble_tx.setup()
         ble_bike_data = BLEEncoder(src)
         tasks.extend([ble_bike_data.loop(), ble_tx.loop(bike_data=ble_bike_data)])
@@ -88,4 +101,14 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    asyncio.run(main(args.bike_id, protocols, args.mock, args.ant_driver))
+    ble_profiles = [p.strip().lower() for p in args.ble_profiles.split(",") if p.strip()]
+    valid_profiles = {"cp", "csc"}
+    if not ble_profiles or not all(p in valid_profiles for p in ble_profiles):
+        print(
+            f"Error: Invalid BLE profile(s). Valid options are: {', '.join(sorted(valid_profiles))}"
+        )
+        sys.exit(1)
+
+    asyncio.run(
+        main(args.bike_id, protocols, args.mock, args.ant_driver, ble_profiles)
+    )

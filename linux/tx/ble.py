@@ -221,17 +221,28 @@ class CSCService(Service):
 
 
 class BLETx:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, profiles=("cp", "csc")) -> None:
+        # Some head units refuse a sensor that advertises both CP and CSC and
+        # will only bind one of the two. Garmin watches in particular expect a
+        # power sensor to advertise Cycling Power alone, so the enabled set is
+        # configurable. CP alone still carries power and cadence.
+        self.profiles = tuple(profiles)
+        if not self.profiles:
+            raise ValueError("at least one BLE profile is required")
+        for p in self.profiles:
+            if p not in ("cp", "csc"):
+                raise ValueError(f"unknown BLE profile: {p}")
 
     async def setup(self):
         bus = await get_message_bus()
 
         bat_service = BatteryService()
         di_service = DeviceInformationService()
-        cp_service = CPService()
-        csc_service = CSCService()
-        svcs = ServiceCollection([bat_service, di_service, cp_service, csc_service])
+        cp_service = CPService() if "cp" in self.profiles else None
+        csc_service = CSCService() if "csc" in self.profiles else None
+        svcs = ServiceCollection(
+            [s for s in (bat_service, di_service, cp_service, csc_service) if s]
+        )
         await svcs.register(bus)
 
         self.bat_service = bat_service
@@ -247,10 +258,17 @@ class BLETx:
         adapter = await Adapter.get_first(bus)
         print(await adapter.get_address())
 
+        service_uuids = [BAT_UUID, DI_UUID]
+        if cp_service:
+            service_uuids.append(CP_UUID)
+        if csc_service:
+            service_uuids.append(CSC_UUID)
+        print(f"BLE profiles advertised: {', '.join(self.profiles)}")
+
         # Start an advert that will last for 60 seconds.
         advert = Advertisement(
             localName="Keiser M to GATT",
-            serviceUUIDs=[BAT_UUID, DI_UUID, CP_UUID, CSC_UUID],
+            serviceUUIDs=service_uuids,
             appearance=0x0480,
             timeout=0,
             includes=AdvertisingIncludes.TX_POWER,
@@ -269,7 +287,7 @@ class BLETx:
             wheel_event_tick = bike_data.get_wheel_event_tick()
             crank_event_tick = bike_data.get_crank_event_tick()
             power = bike_data.get_power()
-            if 1:
+            if self.csc_service:
                 self.csc_service.notify_all(
                     wheel_rev=wheel_revs,
                     crank_rev=crank_revs,
@@ -291,16 +309,17 @@ class BLETx:
                 #         csc_service.notify_wheel(
                 #             wheel_rev=wheel_revs, crank_rev=crank_revs, w_event_tick=wev, c_event_tick=cev
                 #         )
-            self.cp_service.notify_new_rate(
-                power=power,
-                wheel_rev=wheel_revs,
-                crank_rev=crank_revs,
-                w_event_tick=wheel_event_tick,
-                c_event_tick=crank_event_tick,
-            )
-            print(
-                f"BLE 2A63 CP  | pwr {power:4d} W"
-                f" | wheel {wheel_revs:6d} rev @ {wheel_event_tick:5d} tk"
-                f" | crank {crank_revs:6d} rev @ {crank_event_tick:5d} tk"
-            )
+            if self.cp_service:
+                self.cp_service.notify_new_rate(
+                    power=power,
+                    wheel_rev=wheel_revs,
+                    crank_rev=crank_revs,
+                    w_event_tick=wheel_event_tick,
+                    c_event_tick=crank_event_tick,
+                )
+                print(
+                    f"BLE 2A63 CP  | pwr {power:4d} W"
+                    f" | wheel {wheel_revs:6d} rev @ {wheel_event_tick:5d} tk"
+                    f" | crank {crank_revs:6d} rev @ {crank_event_tick:5d} tk"
+                )
         # Handle dbus requests.

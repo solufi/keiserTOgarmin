@@ -18,6 +18,9 @@ Type=simple
 # agent with BlueZ over the system D-Bus, and resetting the ANT+ USB device.
 User=root
 WorkingDirectory=@LINUX_DIR@
+# stdout is a pipe here, so Python block-buffers it and telemetry only reaches
+# the journal in 8 KiB bursts, making `journalctl -f` look dead.
+Environment=PYTHONUNBUFFERED=1
 EnvironmentFile=/etc/default/freefitness
 ExecStart=@VENV_DIR@/bin/python main.py $FREEFITNESS_ARGS
 Restart=always

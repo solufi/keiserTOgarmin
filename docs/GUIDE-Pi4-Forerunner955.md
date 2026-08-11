@@ -150,6 +150,7 @@ différent) → édite `/etc/default/freefitness` et
 | `No powered Bluetooth adapters found` ou `interface not found on this object: org.bluez.Adapter1` | Bluetooth éteint ou bloqué : `sudo rfkill unblock bluetooth && sudo systemctl enable --now bluetooth`, puis `bluetoothctl show` doit dire `Powered: yes`. Si « No default controller available », cherche un `dtoverlay=disable-bt` dans `/boot/firmware/config.txt`. |
 | En BLE : rien n'apparaît du tout | Vérifie `--ble-profiles cp` (sans le CSC) et que `systemctl is-active bluetooth` répond `active`. |
 | Vitesse/distance farfelues | Circonférence de roue ≠ 2096 mm. |
+| Le journal reste vide alors que le service tourne | Après un `git pull` qui touche `deploy/`, relance `sudo ./linux/deploy/install-rpi.sh` : le fichier de service installé dans `/etc/systemd/system/` n'est pas mis à jour par `git pull`. |
 | La session SSH coupe pendant l'install | Lance le script dans `tmux` (`tmux new -s ff`, puis `tmux attach -t ff` après reconnexion). Il est ré-exécutable sans rien casser. |
 | Le service échoue au boot | `journalctl -u freefitness -b` ; si l'erreur mentionne Python 3.9/3.10, ton OS est trop vieux (Bookworm requis). |
 

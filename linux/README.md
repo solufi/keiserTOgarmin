@@ -41,8 +41,8 @@ into an appliance: dependencies in a virtualenv, a systemd unit that survives
 reboots, and a udev rule for the ANT+ stick.
 
 ```bash
-git clone https://github.com/tao-j/FreeFitness.git
-cd FreeFitness
+git clone https://github.com/solufi/keiserTOgarmin.git
+cd keiserTOgarmin
 sudo ./linux/deploy/install-rpi.sh
 ```
 

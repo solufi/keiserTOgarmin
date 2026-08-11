@@ -220,6 +220,31 @@ class CSCService(Service):
         pass
 
 
+ADAPTER_INTERFACE = "org.bluez.Adapter1"
+
+
+async def get_adapter(bus):
+    """Return the first BlueZ object that really implements Adapter1.
+
+    bluez_peripheral's Adapter.get_first() treats every child node of
+    /org/bluez as an adapter. Recent BlueZ releases export other objects under
+    that path, which makes it raise InterfaceNotFoundError before any adapter
+    is reached.
+    """
+    root = await bus.introspect("org.bluez", "/org/bluez")
+    for node in root.nodes:
+        path = "/org/bluez/" + node.name
+        introspection = await bus.introspect("org.bluez", path)
+        if not any(i.name == ADAPTER_INTERFACE for i in introspection.interfaces):
+            continue
+        return Adapter(bus.get_proxy_object("org.bluez", path, introspection))
+
+    raise RuntimeError(
+        "No Bluetooth adapter found. Check `bluetoothctl show` reports"
+        " 'Powered: yes' and that bluetooth.service is running."
+    )
+
+
 class BLETx:
     def __init__(self, profiles=("cp", "csc")) -> None:
         # Some head units refuse a sensor that advertises both CP and CSC and
@@ -235,6 +260,7 @@ class BLETx:
 
     async def setup(self):
         bus = await get_message_bus()
+        adapter = await get_adapter(bus)
 
         bat_service = BatteryService()
         di_service = DeviceInformationService()
@@ -243,7 +269,7 @@ class BLETx:
         svcs = ServiceCollection(
             [s for s in (bat_service, di_service, cp_service, csc_service) if s]
         )
-        await svcs.register(bus)
+        await svcs.register(bus, adapter=adapter)
 
         self.bat_service = bat_service
         self.di_service = di_service
@@ -255,7 +281,6 @@ class BLETx:
         agent = NoIoAgent()
         await agent.register(bus)
 
-        adapter = await Adapter.get_first(bus)
         print(await adapter.get_address())
 
         service_uuids = [BAT_UUID, DI_UUID]

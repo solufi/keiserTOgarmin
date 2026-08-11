@@ -129,8 +129,10 @@ différent) → édite `/etc/default/freefitness` et
 | `ANT: No data` en boucle | Mauvais bike ID (étape 2), ou le Pi est trop loin du vélo. |
 | La montre ne trouve rien | Vérifie que le journal affiche bien des trames PWR. La montre doit chercher un capteur, pas un home trainer. |
 | En BLE : la montre voit le capteur puis décroche | C'est le conflit scan/annonce sur une seule radio. Bascule sur l'ANT+, ou ajoute un 2e dongle BLE. |
+| `No powered Bluetooth adapters found` ou `interface not found on this object: org.bluez.Adapter1` | Bluetooth éteint ou bloqué : `sudo rfkill unblock bluetooth && sudo systemctl enable --now bluetooth`, puis `bluetoothctl show` doit dire `Powered: yes`. Si « No default controller available », cherche un `dtoverlay=disable-bt` dans `/boot/firmware/config.txt`. |
 | En BLE : rien n'apparaît du tout | Vérifie `--ble-profiles cp` (sans le CSC) et que `systemctl is-active bluetooth` répond `active`. |
 | Vitesse/distance farfelues | Circonférence de roue ≠ 2096 mm. |
+| La session SSH coupe pendant l'install | Lance le script dans `tmux` (`tmux new -s ff`, puis `tmux attach -t ff` après reconnexion). Il est ré-exécutable sans rien casser. |
 | Le service échoue au boot | `journalctl -u freefitness -b` ; si l'erreur mentionne Python 3.9/3.10, ton OS est trop vieux (Bookworm requis). |
 
 ## Ce qui n'a pas été testé

@@ -60,6 +60,19 @@ mémorise ton choix.
 
 Le journal en bas de page doit défiler dès que tu pédales.
 
+## Mettre à jour
+
+Bouton **Mettre à jour** en bas de la page : il récupère la dernière version,
+relance l'installeur et redémarre les services. Ta configuration (Bike ID, mode)
+est conservée. La page se coupe une dizaine de secondes, le temps que le service
+web redémarre : rafraîchis-la, le journal de la mise à jour s'affiche.
+
+En ligne de commande, c'est le même script :
+
+```bash
+sudo ~/keiserTOgarmin/linux/deploy/update.sh
+```
+
 ## Wi-Fi (Pi sans écran ni clavier)
 
 La page comporte un panneau **Wi-Fi** : elle liste les réseaux autour, tu

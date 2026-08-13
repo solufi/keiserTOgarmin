@@ -71,6 +71,15 @@ STRINGS = {
         "wifi_open": "réseau ouvert",
         "wifi_unavailable": "NetworkManager est absent : configure le Wi-Fi"
         " avec raspi-config.",
+        "update": "Mise à jour",
+        "update_button": "Mettre à jour",
+        "update_hint": "Récupère la dernière version et relance l'installeur."
+        " La page se coupe une dizaine de secondes : rafraîchis-la pour voir la"
+        " suite. Ta configuration est conservée.",
+        "update_started": "Mise à jour lancée. Rafraîchis la page dans une"
+        " minute.",
+        "update_log": "Journal de la dernière mise à jour",
+        "version": "Version",
     },
     "en": {
         "title": "Keiser M3i → Garmin",
@@ -130,6 +139,14 @@ STRINGS = {
         "wifi_open": "open network",
         "wifi_unavailable": "NetworkManager is missing: configure Wi-Fi with"
         " raspi-config.",
+        "update": "Update",
+        "update_button": "Update now",
+        "update_hint": "Fetches the latest version and re-runs the installer."
+        " The page drops for about ten seconds: refresh it to see the rest."
+        " Your configuration is kept.",
+        "update_started": "Update started. Refresh the page in a minute.",
+        "update_log": "Last update log",
+        "version": "Version",
     },
 }
 

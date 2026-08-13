@@ -26,6 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import config
 import i18n
 import scan
+import wifi
 
 SERVICE = "freefitness.service"
 JOURNAL_LINES = 25
@@ -124,6 +125,11 @@ PAGE = """<!doctype html>
 </form>
 {scan_result}
 
+<fieldset>
+ <legend>{wifi_title}</legend>
+ {wifi_panel}
+</fieldset>
+
 <form method="post" action="/service?lang={lang}">
  <button class="secondary" name="action" value="restart" type="submit">{restart}</button>
  <button class="secondary" name="action" value="stop" type="submit">{stop}</button>
@@ -138,9 +144,16 @@ PAGE = """<!doctype html>
 """
 
 
-def render(cfg: config.Config, lang: str, scan_result: str = "") -> bytes:
+def render(
+    cfg: config.Config,
+    lang: str,
+    scan_result: str = "",
+    wifi_result: str = "",
+    networks: list[wifi.Network] | None = None,
+) -> bytes:
     active = service_active()
     selected = mode_of(cfg)
+    wifi_panel = render_wifi(lang, wifi_result, networks)
 
     radios = []
     for key, (_protocols, _profiles, hint_key) in MODES.items():
@@ -181,6 +194,8 @@ def render(cfg: config.Config, lang: str, scan_result: str = "") -> bytes:
         save=html.escape(i18n.t(lang, "save")),
         scan_button=html.escape(i18n.t(lang, "scan_button")),
         scan_result=scan_result,
+        wifi_title=html.escape(i18n.t(lang, "wifi")),
+        wifi_panel=wifi_panel,
         restart=html.escape(i18n.t(lang, "restart")),
         stop=html.escape(i18n.t(lang, "stop")),
         start=html.escape(i18n.t(lang, "start")),
@@ -188,6 +203,72 @@ def render(cfg: config.Config, lang: str, scan_result: str = "") -> bytes:
         journal=html.escape(journal(lang)),
         refresh=html.escape(i18n.t(lang, "refresh")),
     ).encode()
+
+
+def render_wifi(
+    lang: str, result: str = "", networks: list[wifi.Network] | None = None
+) -> str:
+    if not wifi.available():
+        return f"<p>{html.escape(i18n.t(lang, 'wifi_unavailable'))}</p>"
+
+    parts = [result] if result else []
+
+    if wifi.hotspot_active():
+        parts.append(f"<p class='off'>{html.escape(i18n.t(lang, 'wifi_hotspot'))}</p>")
+    else:
+        ssid = wifi.current()
+        if ssid:
+            parts.append(
+                "<p>{label}{colon}<b>{ssid}</b></p>".format(
+                    label=html.escape(i18n.t(lang, "wifi_connected")),
+                    colon=i18n.t(lang, "colon"),
+                    ssid=html.escape(ssid),
+                )
+            )
+        else:
+            parts.append(
+                f"<p class='off'>{html.escape(i18n.t(lang, 'wifi_disconnected'))}</p>"
+            )
+
+    parts.append(
+        '<form method="post" action="/wifi-scan?lang={lang}">'
+        '<button class="secondary" type="submit">{label}</button></form>'.format(
+            lang=lang, label=html.escape(i18n.t(lang, "wifi_scan_button"))
+        )
+    )
+
+    if networks is not None:
+        if not networks:
+            parts.append(f"<p>{html.escape(i18n.t(lang, 'wifi_empty'))}</p>")
+        else:
+            radios = "\n".join(
+                '<label><input type="radio" name="ssid" value="{ssid}" {checked}>'
+                " {ssid_text} <span class='hint'>{signal} %{open}</span></label>".format(
+                    ssid=html.escape(net.ssid, quote=True),
+                    ssid_text=html.escape(net.ssid),
+                    checked="checked" if net.active else "",
+                    signal=net.signal,
+                    open=""
+                    if net.secured
+                    else " — " + html.escape(i18n.t(lang, "wifi_open")),
+                )
+                for net in networks
+            )
+            parts.append(
+                '<form method="post" action="/wifi-connect?lang={lang}">'
+                "{radios}"
+                '<label>{password}<input type="password" name="password"></label>'
+                '<button type="submit">{connect}</button>'
+                "</form><p class='hint'>{select}</p>".format(
+                    lang=lang,
+                    radios=radios,
+                    password=html.escape(i18n.t(lang, "wifi_password")) + " ",
+                    connect=html.escape(i18n.t(lang, "wifi_connect")),
+                    select=html.escape(i18n.t(lang, "wifi_select")),
+                )
+            )
+
+    return "\n".join(parts)
 
 
 def render_scan(lang: str) -> str:
@@ -260,6 +341,10 @@ class Handler(BaseHTTPRequestHandler):
             self._save(form, lang)
         elif path == "/scan":
             self._send(render(config.load(), lang, render_scan(lang)))
+        elif path == "/wifi-scan":
+            self._wifi_scan(lang)
+        elif path == "/wifi-connect":
+            self._wifi_connect(form, lang)
         elif path == "/service":
             action = form.get("action", ["restart"])[0]
             if action in ("start", "stop", "restart"):
@@ -267,6 +352,37 @@ class Handler(BaseHTTPRequestHandler):
             self._redirect(lang)
         else:
             self.send_error(404)
+
+    def _wifi_scan(self, lang: str):
+        try:
+            networks = wifi.scan()
+            error = ""
+        except Exception as exc:  # nmcli missing, busy or rfkill'd
+            networks, error = [], (
+                f"<p class='off'>{html.escape(i18n.t(lang, 'scan_failed'))}"
+                f"{i18n.t(lang, 'colon')}{html.escape(str(exc))}</p>"
+            )
+        self._send(render(config.load(), lang, wifi_result=error, networks=networks))
+
+    def _wifi_connect(self, form: dict, lang: str):
+        ssid = form.get("ssid", [""])[0]
+        password = form.get("password", [""])[0]
+        try:
+            wifi.connect(ssid, password)
+        except Exception as exc:
+            # Joining a network usually kills the very connection carrying this
+            # request when the client is on the setup hotspot, so the answer may
+            # never arrive — the page is only best-effort feedback.
+            result = (
+                f"<p class='off'>{html.escape(i18n.t(lang, 'wifi_failed'))}"
+                f"{i18n.t(lang, 'colon')}{html.escape(str(exc))}</p>"
+            )
+        else:
+            result = (
+                f"<p class='on'>{html.escape(i18n.t(lang, 'wifi_ok'))}"
+                f"{i18n.t(lang, 'colon')}<b>{html.escape(ssid)}</b></p>"
+            )
+        self._send(render(config.load(), lang, wifi_result=result))
 
     def _save(self, form: dict, lang: str):
         cfg = config.load()

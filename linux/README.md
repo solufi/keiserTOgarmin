@@ -81,6 +81,13 @@ cookie), and spells out under each output mode what the watch will end up
 pairing with — one `Keiser M to GATT` power sensor over BLE, two sensors over
 ANT+ (`PWR` for power and cadence, `SPD` for speed and distance).
 
+The same page configures Wi-Fi through NetworkManager (`nmcli device wifi
+list` / `connect`), which is what a headless Pi needs. When no known network is
+found within ~45 s of boot, `ktog-hotspot.service` turns the Pi into an access
+point (`KeiserToGarmin` / `keiser2garmin`, page at `http://10.42.0.1:8080/`) so
+credentials can be entered from a phone; the profile is created with
+`autoconnect no`, so a configured Pi never comes up as an AP again.
+
 Being unauthenticated and able to restart a root service, it belongs on a
 trusted LAN only; disable it with
 `sudo systemctl disable --now freefitness-web`.

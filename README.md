@@ -26,18 +26,20 @@ comme avec un vrai capteur. Rien à installer sur la montre.
 sudo apt update && sudo apt install -y git
 git clone https://github.com/solufi/keiserTOgarmin.git
 cd keiserTOgarmin
-sudo ./linux/deploy/install-rpi.sh
+sudo ./linux/deploy/install-rpi.sh --hostname ktog
 ```
 
 Le script installe tout (dépendances, environnement Python, service au
 démarrage, règle USB pour l'ANT+) et lance l'interface de configuration.
+`--hostname ktog` renomme le Pi pour que la page réponde sur `ktog.local` ;
+omets l'option pour garder le nom actuel.
 
 ## Configuration
 
 Depuis un téléphone ou un PC sur le même réseau :
 
 ```
-http://<nom-du-pi>.local:8080/
+http://ktog.local:8080/
 ```
 
 La page est en français ou en anglais : le lien **FR | EN** en haut à droite
@@ -57,6 +59,22 @@ mémorise ton choix.
 4. **Enregistrer et redémarrer**.
 
 Le journal en bas de page doit défiler dès que tu pédales.
+
+## Wi-Fi (Pi sans écran ni clavier)
+
+La page comporte un panneau **Wi-Fi** : elle liste les réseaux autour, tu
+choisis le tien, tu tapes le mot de passe, et le Pi s'y connecte et s'en
+souvient au redémarrage.
+
+Si le Pi démarre sans trouver de réseau connu, il **crée le sien** au bout d'une
+quarantaine de secondes :
+
+| Réseau | Mot de passe | Page |
+| --- | --- | --- |
+| `KeiserToGarmin` | `keiser2garmin` | http://10.42.0.1:8080/ |
+
+Tu t'y connectes avec le téléphone, tu configures le Wi-Fi depuis la page, et le
+réseau de secours disparaît. Aucun câble réseau, aucun clavier nécessaire.
 
 ## Appairer la montre
 

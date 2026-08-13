@@ -55,6 +55,21 @@ chaque mode la page rappelle ce que la montre verra : un seul capteur
 écrit exactement le même fichier que les étapes 3 et 4 ci-dessous — celles-ci
 restent valables si tu préfères la ligne de commande.
 
+### Wi-Fi et nom du Pi
+
+Le panneau **Wi-Fi** de la page liste les réseaux autour, se connecte à celui
+que tu choisis et retient le mot de passe pour les redémarrages suivants.
+
+Si le Pi démarre sans réseau connu (première mise en route, changement de
+maison), il crée son propre point d'accès au bout d'environ 45 s :
+
+- réseau `KeiserToGarmin`, mot de passe `keiser2garmin`
+- page de configuration : http://10.42.0.1:8080/
+
+Tu t'y connectes avec le téléphone, tu saisis ton Wi-Fi, et le point d'accès
+disparaît. Pour que la page réponde ensuite sur `http://ktog.local:8080/`,
+lance l'installeur avec `--hostname ktog` (il installe aussi avahi).
+
 L'interface n'a aucun mot de passe et peut redémarrer un service root : à
 n'exposer que sur un réseau de confiance. Pour la désactiver :
 `sudo systemctl disable --now freefitness-web`.

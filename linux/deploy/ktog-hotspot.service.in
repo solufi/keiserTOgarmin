@@ -1,0 +1,13 @@
+[Unit]
+Description=Keiser to Garmin Wi-Fi setup hotspot (only when no Wi-Fi is available)
+Documentation=https://github.com/solufi/keiserTOgarmin
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=@DEPLOY_DIR@/ktog-hotspot.sh
+
+[Install]
+WantedBy=multi-user.target

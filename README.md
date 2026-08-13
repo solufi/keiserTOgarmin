@@ -40,6 +40,9 @@ Depuis un téléphone ou un PC sur le même réseau :
 http://<nom-du-pi>.local:8080/
 ```
 
+La page est en français ou en anglais : le lien **FR | EN** en haut à droite
+mémorise ton choix.
+
 1. **Cherche les vélos** et pédale : le tien est celui dont la cadence bouge.
    Note son *Bike ID*.
 2. Saisis ce Bike ID.
@@ -47,7 +50,10 @@ http://<nom-du-pi>.local:8080/
    - **Bluetooth — capteur de puissance seul** : sans rien acheter. La montre
      ne verra qu'un capteur, ce qui suffit.
    - **ANT+** : nécessite le dongle USB. Plus stable, et plusieurs appareils
-     peuvent capter en même temps.
+     peuvent capter en même temps. La montre verra **deux** capteurs :
+     `PWR` (puissance + cadence) et `SPD` (vitesse + distance).
+
+   Sous chaque choix, la page indique ce que la montre affichera.
 4. **Enregistrer et redémarrer**.
 
 Le journal en bas de page doit défiler dès que tu pédales.

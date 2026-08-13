@@ -76,6 +76,11 @@ restarts the bridge, so the CLI stays the source of truth and the two paths
 cannot drift. It also scans for nearby Keiser bikes and lists their IDs with
 live cadence, which is how you tell two bikes apart, and tails the journal.
 
+The page is available in French and English (`FR | EN`, remembered in a
+cookie), and spells out under each output mode what the watch will end up
+pairing with — one `Keiser M to GATT` power sensor over BLE, two sensors over
+ANT+ (`PWR` for power and cadence, `SPD` for speed and distance).
+
 Being unauthenticated and able to restart a root service, it belongs on a
 trusted LAN only; disable it with
 `sudo systemctl disable --now freefitness-web`.

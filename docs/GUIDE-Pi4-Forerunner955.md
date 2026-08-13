@@ -47,7 +47,11 @@ http://<nom-du-pi>.local:8080/     (ex. http://keiser.local:8080/)
 ```
 
 Elle permet de saisir le bike ID, de chercher les vélos autour, de choisir
-Bluetooth ou ANT+, de démarrer/arrêter le pont et de lire le journal. Elle
+Bluetooth ou ANT+, de démarrer/arrêter le pont et de lire le journal. Le lien
+**FR | EN** en haut à droite change la langue (le choix est mémorisé), et sous
+chaque mode la page rappelle ce que la montre verra : un seul capteur
+`Keiser M to GATT` en Bluetooth, deux capteurs `PWR` (puissance + cadence) et
+`SPD` (vitesse + distance) en ANT+. Elle
 écrit exactement le même fichier que les étapes 3 et 4 ci-dessous — celles-ci
 restent valables si tu préfères la ligne de commande.
 

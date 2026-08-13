@@ -24,21 +24,27 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import config
+import i18n
 import scan
 
 SERVICE = "freefitness.service"
 JOURNAL_LINES = 25
 
+# key -> (protocols, ble_profiles, pairing-hint string key)
 MODES = {
-    "ble-cp": ("Bluetooth — capteur de puissance seul (Garmin)", ["ble"], ["cp"]),
-    "ble-cp-csc": ("Bluetooth — puissance + vitesse/cadence (Zwift, Apple Watch)", ["ble"], ["cp", "csc"]),
-    "ant": ("ANT+ (dongle USB requis)", ["ant"], ["cp"]),
-    "ant-ble": ("ANT+ et Bluetooth simultanément", ["ant", "ble"], ["cp"]),
+    "ble-cp": (["ble"], ["cp"], "pair_ble_cp"),
+    "ble-cp-csc": (["ble"], ["cp", "csc"], "pair_ble_cp_csc"),
+    "ant": (["ant"], ["cp"], "pair_ant"),
+    "ant-ble": (["ant", "ble"], ["cp"], "pair_ant_ble"),
 }
 
 
+def mode_label_key(mode: str) -> str:
+    return "mode_" + mode.replace("-", "_")
+
+
 def mode_of(cfg: config.Config) -> str:
-    for key, (_label, protocols, profiles) in MODES.items():
+    for key, (protocols, profiles, _hint) in MODES.items():
         if protocols == cfg.protocols and (
             "ble" not in protocols or profiles == cfg.ble_profiles
         ):
@@ -57,18 +63,18 @@ def service_active() -> bool:
     return systemctl("is-active", SERVICE) == "active"
 
 
-def journal() -> str:
+def journal(lang: str) -> str:
     result = subprocess.run(
         ["journalctl", "-u", SERVICE, "-n", str(JOURNAL_LINES), "--no-pager", "-o", "cat"],
         capture_output=True,
         text=True,
         timeout=30,
     )
-    return result.stdout.strip() or "(aucune sortie)"
+    return result.stdout.strip() or i18n.t(lang, "no_output")
 
 
 PAGE = """<!doctype html>
-<html lang="fr">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -89,118 +95,176 @@ PAGE = """<!doctype html>
  .on {{ color: #4ade80; }} .off {{ color: #f87171; }}
  table {{ border-collapse: collapse; width: 100%; }}
  td, th {{ text-align: left; padding: .3rem .5rem; border-bottom: 1px solid #333; }}
+ .hint {{ margin: 0 0 .9rem 1.6rem; font-size: .85rem; color: #a0a6b0; }}
+ .langs {{ float: right; font-size: .9rem; }}
+ a {{ color: #8ab4f8; }}
+ .langs b {{ color: #e8e8e8; }}
 </style>
 </head>
 <body>
-<h1>Keiser M3i → Garmin</h1>
-<p>Service : <span class="state {state_class}">{state}</span></p>
+<div class="langs">{lang_links}</div>
+<h1>{title}</h1>
+<p>{service}{colon}<span class="state {state_class}">{state}</span></p>
 
-<form method="post" action="/save">
+<form method="post" action="/save?lang={lang}">
  <fieldset>
-  <legend>Vélo</legend>
-  <label>Bike ID <input type="number" name="bike_id" min="0" max="255" value="{bike_id}"></label>
-  <label><input type="checkbox" name="mock" {mock_checked}> Simulateur (ignore le vélo, données factices)</label>
+  <legend>{bike}</legend>
+  <label>{bike_id_label} <input type="number" name="bike_id" min="0" max="255" value="{bike_id}"></label>
+  <label><input type="checkbox" name="mock" {mock_checked}> {mock}</label>
  </fieldset>
  <fieldset>
-  <legend>Sortie vers la montre</legend>
+  <legend>{output}</legend>
   {mode_radios}
  </fieldset>
- <button type="submit">Enregistrer et redémarrer</button>
+ <button type="submit">{save}</button>
 </form>
 
-<form method="post" action="/scan">
- <button class="secondary" type="submit">Chercher les vélos (12 s)</button>
+<form method="post" action="/scan?lang={lang}">
+ <button class="secondary" type="submit">{scan_button}</button>
 </form>
 {scan_result}
 
-<form method="post" action="/service">
- <button class="secondary" name="action" value="restart" type="submit">Redémarrer</button>
- <button class="secondary" name="action" value="stop" type="submit">Arrêter</button>
- <button class="secondary" name="action" value="start" type="submit">Démarrer</button>
+<form method="post" action="/service?lang={lang}">
+ <button class="secondary" name="action" value="restart" type="submit">{restart}</button>
+ <button class="secondary" name="action" value="stop" type="submit">{stop}</button>
+ <button class="secondary" name="action" value="start" type="submit">{start}</button>
 </form>
 
-<h2>Journal</h2>
+<h2>{journal_title}</h2>
 <pre>{journal}</pre>
-<p><a href="/" style="color:#8ab4f8">Rafraîchir</a></p>
+<p><a href="/?lang={lang}">{refresh}</a></p>
 </body>
 </html>
 """
 
 
-def render(cfg: config.Config, scan_result: str = "") -> bytes:
+def render(cfg: config.Config, lang: str, scan_result: str = "") -> bytes:
     active = service_active()
     selected = mode_of(cfg)
-    radios = "\n".join(
-        '<label><input type="radio" name="mode" value="{key}" {checked}> {label}</label>'.format(
-            key=key,
-            label=html.escape(label),
-            checked="checked" if key == selected else "",
+
+    radios = []
+    for key, (_protocols, _profiles, hint_key) in MODES.items():
+        radios.append(
+            '<label><input type="radio" name="mode" value="{key}" {checked}> {label}</label>'
+            '<p class="hint">{pairing}{colon}{hint}</p>'.format(
+                key=key,
+                checked="checked" if key == selected else "",
+                label=html.escape(i18n.t(lang, mode_label_key(key))),
+                pairing=html.escape(i18n.t(lang, "pairing")),
+                colon=i18n.t(lang, "colon"),
+                # Hints carry <b> markup on purpose; they are author-written,
+                # not user input.
+                hint=i18n.t(lang, hint_key),
+            )
         )
-        for key, (label, _p, _f) in MODES.items()
+
+    lang_links = " | ".join(
+        f"<b>{code.upper()}</b>" if code == lang else f'<a href="/?lang={code}">{code.upper()}</a>'
+        for code in i18n.LANGS
     )
+
     return PAGE.format(
-        state="actif" if active else "arrêté",
+        lang=lang,
+        lang_links=lang_links,
+        title=html.escape(i18n.t(lang, "title")),
+        service=html.escape(i18n.t(lang, "service")),
+        colon=i18n.t(lang, "colon"),
+        state=html.escape(i18n.t(lang, "active" if active else "inactive")),
         state_class="on" if active else "off",
+        bike=html.escape(i18n.t(lang, "bike")),
+        bike_id_label=html.escape(i18n.t(lang, "bike_id")),
         bike_id=cfg.bike_id,
+        mock=html.escape(i18n.t(lang, "mock")),
         mock_checked="checked" if cfg.mock else "",
-        mode_radios=radios,
+        output=html.escape(i18n.t(lang, "output")),
+        mode_radios="\n".join(radios),
+        save=html.escape(i18n.t(lang, "save")),
+        scan_button=html.escape(i18n.t(lang, "scan_button")),
         scan_result=scan_result,
-        journal=html.escape(journal()),
+        restart=html.escape(i18n.t(lang, "restart")),
+        stop=html.escape(i18n.t(lang, "stop")),
+        start=html.escape(i18n.t(lang, "start")),
+        journal_title=html.escape(i18n.t(lang, "journal")),
+        journal=html.escape(journal(lang)),
+        refresh=html.escape(i18n.t(lang, "refresh")),
     ).encode()
 
 
-def render_scan() -> str:
+def render_scan(lang: str) -> str:
     try:
         sightings = asyncio.run(scan.scan())
     except Exception as exc:  # a busy or missing adapter must not kill the UI
-        return f"<p class='off'>Scan impossible : {html.escape(str(exc))}</p>"
+        return (
+            f"<p class='off'>{html.escape(i18n.t(lang, 'scan_failed'))}"
+            f"{i18n.t(lang, 'colon')}{html.escape(str(exc))}</p>"
+        )
 
     if not sightings:
-        return (
-            "<p>Aucun vélo entendu. Réveille la console du Keiser en pédalant"
-            " et réessaie.</p>"
-        )
+        return f"<p>{html.escape(i18n.t(lang, 'scan_empty'))}</p>"
 
     rows = "\n".join(
         "<tr><td><b>{id}</b></td><td>{cadence:.0f} rpm</td><td>{power} W</td>"
-        "<td>{frames} trames</td></tr>".format(
-            id=s.bike_id, cadence=s.cadence, power=s.power, frames=s.frames
+        "<td>{frames} {frames_label}</td></tr>".format(
+            id=s.bike_id,
+            cadence=s.cadence,
+            power=s.power,
+            frames=s.frames,
+            frames_label=html.escape(i18n.t(lang, "frames")),
         )
         for s in sightings
     )
     return (
-        "<table><tr><th>Bike ID</th><th>Cadence</th><th>Puissance</th><th></th></tr>"
-        f"{rows}</table><p>Le tien est celui dont la cadence bouge quand tu pédales.</p>"
+        "<table><tr><th>{bike_id}</th><th>{cadence}</th><th>{power}</th><th></th></tr>"
+        "{rows}</table><p>{hint}</p>".format(
+            bike_id=html.escape(i18n.t(lang, "bike_id")),
+            cadence=html.escape(i18n.t(lang, "cadence")),
+            power=html.escape(i18n.t(lang, "power")),
+            rows=rows,
+            hint=html.escape(i18n.t(lang, "scan_hint")),
+        )
     )
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "freefitness-web"
 
+    def _lang(self) -> str:
+        """?lang= wins, else the cookie set on the last explicit choice."""
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        if "lang" in query:
+            return i18n.normalize(query["lang"][0])
+        cookies = self.headers.get("Cookie") or ""
+        for part in cookies.split(";"):
+            name, _, value = part.strip().partition("=")
+            if name == "lang":
+                return i18n.normalize(value)
+        return i18n.DEFAULT_LANG
+
     def do_GET(self):
-        if self.path.split("?")[0] != "/":
+        if urllib.parse.urlparse(self.path).path != "/":
             self.send_error(404)
             return
-        self._send(render(config.load()))
+        self._send(render(config.load(), self._lang()))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length") or 0)
         form = urllib.parse.parse_qs(self.rfile.read(length).decode())
-        path = self.path.split("?")[0]
+        path = urllib.parse.urlparse(self.path).path
+        lang = self._lang()
 
         if path == "/save":
-            self._save(form)
+            self._save(form, lang)
         elif path == "/scan":
-            self._send(render(config.load(), render_scan()))
+            self._send(render(config.load(), lang, render_scan(lang)))
         elif path == "/service":
             action = form.get("action", ["restart"])[0]
             if action in ("start", "stop", "restart"):
                 systemctl(action, SERVICE)
-            self._redirect()
+            self._redirect(lang)
         else:
             self.send_error(404)
 
-    def _save(self, form: dict):
+    def _save(self, form: dict, lang: str):
         cfg = config.load()
         try:
             bike_id = int(form.get("bike_id", ["0"])[0])
@@ -208,7 +272,7 @@ class Handler(BaseHTTPRequestHandler):
             bike_id = cfg.bike_id
         cfg.bike_id = max(0, min(255, bike_id))
         cfg.mock = "mock" in form
-        _label, protocols, profiles = MODES.get(
+        protocols, profiles, _hint = MODES.get(
             form.get("mode", [""])[0], MODES["ble-cp"]
         )
         cfg.protocols = list(protocols)
@@ -216,18 +280,21 @@ class Handler(BaseHTTPRequestHandler):
 
         config.save(cfg)
         systemctl("restart", SERVICE)
-        self._redirect()
+        self._redirect(lang)
 
     def _send(self, body: bytes):
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header(
+            "Set-Cookie", f"lang={self._lang()}; Path=/; Max-Age=31536000; SameSite=Lax"
+        )
         self.end_headers()
         self.wfile.write(body)
 
-    def _redirect(self):
+    def _redirect(self, lang: str):
         self.send_response(303)
-        self.send_header("Location", "/")
+        self.send_header("Location", f"/?lang={lang}")
         self.end_headers()
 
     def log_message(self, fmt, *args):

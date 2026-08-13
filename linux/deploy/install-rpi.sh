@@ -5,14 +5,26 @@
 # (or any Debian/Ubuntu based SBC). Installs system packages, builds a
 # virtualenv, and registers the systemd service + ANT+ udev rule.
 #
-# Usage:  sudo ./linux/deploy/install-rpi.sh [--no-service]
+# Usage:  sudo ./linux/deploy/install-rpi.sh [--no-service] [--hostname ktog]
+#
+# --hostname renames the Pi so the page answers on http://<name>.local:8080/.
+# Without it the current hostname is left alone.
 #
 # Set PYTHON=/path/to/python3.x to build the virtualenv with a specific
 # interpreter instead of the system python3.
 set -euo pipefail
 
 INSTALL_SERVICE=1
-[[ "${1:-}" == "--no-service" ]] && INSTALL_SERVICE=0
+NEW_HOSTNAME=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --no-service) INSTALL_SERVICE=0 ;;
+        --hostname) NEW_HOSTNAME="${2:-}"; shift ;;
+        --hostname=*) NEW_HOSTNAME="${1#*=}" ;;
+        *) echo "Unknown argument: $1" >&2; exit 1 ;;
+    esac
+    shift
+done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LINUX_DIR="$REPO_ROOT/linux"
@@ -37,8 +49,11 @@ fi
 
 echo "==> Installing system packages"
 apt-get update -qq
+# avahi-daemon answers <hostname>.local, which is how the page is reached
+# without knowing the Pi's IP address.
 apt-get install -y --no-install-recommends \
-    bluez libusb-1.0-0 python3-venv python3-dev git
+    bluez libusb-1.0-0 python3-venv python3-dev git avahi-daemon
+systemctl enable --now avahi-daemon || true
 
 echo "==> Creating virtualenv at $VENV_DIR"
 "$PYTHON" -m venv "$VENV_DIR"
@@ -50,6 +65,20 @@ echo "==> Enabling Bluetooth"
 # disabled, which surfaces as "No powered Bluetooth adapters found".
 command -v rfkill >/dev/null && rfkill unblock bluetooth || true
 systemctl enable --now bluetooth || true
+
+if [[ -n "$NEW_HOSTNAME" ]]; then
+    if [[ "$NEW_HOSTNAME" =~ ^[a-zA-Z0-9-]{1,63}$ ]]; then
+        echo "==> Renaming host to $NEW_HOSTNAME"
+        OLD_HOSTNAME="$(hostname)"
+        hostnamectl set-hostname "$NEW_HOSTNAME"
+        # /etc/hosts keeps the old name, which makes sudo slow to resolve it.
+        sed -i "s/\b$OLD_HOSTNAME\b/$NEW_HOSTNAME/g" /etc/hosts
+        systemctl restart avahi-daemon || true
+    else
+        echo "Invalid hostname '$NEW_HOSTNAME' (letters, digits and dashes only)." >&2
+        exit 1
+    fi
+fi
 
 echo "==> Installing ANT+ udev rule"
 install -m 0644 "$DEPLOY_DIR/99-ant-usb.rules" "$UDEV_FILE"
@@ -65,18 +94,34 @@ if [[ $INSTALL_SERVICE -eq 1 ]]; then
     fi
 
     echo "==> Installing systemd units"
-    for template in freefitness.service freefitness-web.service; do
+    chmod 0755 "$DEPLOY_DIR/ktog-hotspot.sh"
+    for template in freefitness.service freefitness-web.service ktog-hotspot.service; do
         sed -e "s|@LINUX_DIR@|$LINUX_DIR|g" \
             -e "s|@VENV_DIR@|$VENV_DIR|g" \
+            -e "s|@DEPLOY_DIR@|$DEPLOY_DIR|g" \
             "$DEPLOY_DIR/$template.in" > "$UNIT_DIR/$template"
         chmod 0644 "$UNIT_DIR/$template"
     done
     systemctl daemon-reload
     systemctl enable freefitness.service
     systemctl enable --now freefitness-web.service
+
+    # The fallback access point is pointless without NetworkManager (older Pi
+    # OS images still use dhcpcd/wpa_supplicant).
+    if command -v nmcli >/dev/null; then
+        systemctl enable ktog-hotspot.service
+    else
+        echo "==> NetworkManager not found, skipping the Wi-Fi setup hotspot"
+    fi
     echo
     echo "Bridge installed but not started. Configure it from a browser at"
     echo "    http://$(hostname).local:8080/   (or http://<pi-ip>:8080/)"
+    if command -v nmcli >/dev/null; then
+        echo
+        echo "If the Pi ever boots without Wi-Fi, it raises the access point"
+        echo "'KeiserToGarmin' (password keiser2garmin): join it and open"
+        echo "    http://10.42.0.1:8080/"
+    fi
     echo "or edit $DEFAULTS_FILE by hand, then:  sudo systemctl start freefitness"
 fi
 

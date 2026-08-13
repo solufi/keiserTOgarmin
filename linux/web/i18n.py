@@ -54,6 +54,23 @@ STRINGS = {
         "pair_ant_ble": "Les capteurs ANT+ <b>PWR</b> et <b>SPD</b> et le"
         " capteur Bluetooth « Keiser M to GATT » sont émis en même temps :"
         " apparie ce que ton appareil préfère.",
+        "wifi": "Wi-Fi",
+        "wifi_connected": "Connecté à",
+        "wifi_disconnected": "Non connecté",
+        "wifi_hotspot": "Le Pi diffuse son propre réseau de configuration."
+        " Choisis ton Wi-Fi ci-dessous : la connexion à ce réseau de secours"
+        " sera coupée, rejoins ton Wi-Fi habituel puis rouvre la page sur"
+        " http://ktog.local:8080/",
+        "wifi_scan_button": "Chercher les réseaux Wi-Fi",
+        "wifi_password": "Mot de passe",
+        "wifi_connect": "Se connecter",
+        "wifi_select": "Choisis un réseau, puis saisis le mot de passe.",
+        "wifi_empty": "Aucun réseau trouvé.",
+        "wifi_failed": "Connexion impossible",
+        "wifi_ok": "Connecté au réseau",
+        "wifi_open": "réseau ouvert",
+        "wifi_unavailable": "NetworkManager est absent : configure le Wi-Fi"
+        " avec raspi-config.",
     },
     "en": {
         "title": "Keiser M3i → Garmin",
@@ -97,6 +114,22 @@ STRINGS = {
         "pair_ant_ble": "The ANT+ <b>PWR</b> and <b>SPD</b> sensors and the"
         " Bluetooth “Keiser M to GATT” sensor are broadcast together: pair"
         " whichever your device prefers.",
+        "wifi": "Wi-Fi",
+        "wifi_connected": "Connected to",
+        "wifi_disconnected": "Not connected",
+        "wifi_hotspot": "The Pi is broadcasting its own setup network. Pick"
+        " your Wi-Fi below: this fallback network will go away, so rejoin your"
+        " usual Wi-Fi and reopen the page at http://ktog.local:8080/",
+        "wifi_scan_button": "Scan for Wi-Fi networks",
+        "wifi_password": "Password",
+        "wifi_connect": "Connect",
+        "wifi_select": "Pick a network, then type the password.",
+        "wifi_empty": "No network found.",
+        "wifi_failed": "Could not connect",
+        "wifi_ok": "Connected to network",
+        "wifi_open": "open network",
+        "wifi_unavailable": "NetworkManager is missing: configure Wi-Fi with"
+        " raspi-config.",
     },
 }
 

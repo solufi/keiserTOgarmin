@@ -19,6 +19,7 @@ a trusted LAN only.
 import argparse
 import asyncio
 import html
+import os
 import subprocess
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,6 +31,10 @@ import wifi
 
 SERVICE = "freefitness.service"
 JOURNAL_LINES = 25
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+UPDATE_SCRIPT = os.path.join(REPO_ROOT, "linux", "deploy", "update.sh")
+UPDATE_LOG = "/var/log/ktog-update.log"
+UPDATE_LOG_LINES = 20
 
 # key -> (protocols, ble_profiles, pairing-hint string key)
 MODES = {
@@ -130,6 +135,16 @@ PAGE = """<!doctype html>
  {wifi_panel}
 </fieldset>
 
+<fieldset>
+ <legend>{update_title}</legend>
+ <p>{version}{colon}<code>{revision}</code></p>
+ <form method="post" action="/update?lang={lang}">
+  <button class="secondary" type="submit">{update_button}</button>
+ </form>
+ <p class="hint">{update_hint}</p>
+ {update_panel}
+</fieldset>
+
 <form method="post" action="/service?lang={lang}">
  <button class="secondary" name="action" value="restart" type="submit">{restart}</button>
  <button class="secondary" name="action" value="stop" type="submit">{stop}</button>
@@ -150,6 +165,7 @@ def render(
     scan_result: str = "",
     wifi_result: str = "",
     networks: list[wifi.Network] | None = None,
+    update_result: str = "",
 ) -> bytes:
     active = service_active()
     selected = mode_of(cfg)
@@ -196,6 +212,12 @@ def render(
         scan_result=scan_result,
         wifi_title=html.escape(i18n.t(lang, "wifi")),
         wifi_panel=wifi_panel,
+        update_title=html.escape(i18n.t(lang, "update")),
+        update_button=html.escape(i18n.t(lang, "update_button")),
+        update_hint=html.escape(i18n.t(lang, "update_hint")),
+        update_panel=render_update(lang, update_result),
+        version=html.escape(i18n.t(lang, "version")),
+        revision=html.escape(revision()),
         restart=html.escape(i18n.t(lang, "restart")),
         stop=html.escape(i18n.t(lang, "stop")),
         start=html.escape(i18n.t(lang, "start")),
@@ -203,6 +225,33 @@ def render(
         journal=html.escape(journal(lang)),
         refresh=html.escape(i18n.t(lang, "refresh")),
     ).encode()
+
+
+def revision() -> str:
+    result = subprocess.run(
+        ["git", "-C", REPO_ROOT, "describe", "--always", "--dirty"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    return result.stdout.strip() or "?"
+
+
+def render_update(lang: str, result: str = "") -> str:
+    parts = [result] if result else []
+    try:
+        with open(UPDATE_LOG) as handle:
+            tail = handle.read().splitlines()[-UPDATE_LOG_LINES:]
+    except OSError:  # never updated from the page yet
+        tail = []
+    if tail:
+        parts.append(
+            "<p>{title}</p><pre>{log}</pre>".format(
+                title=html.escape(i18n.t(lang, "update_log")),
+                log=html.escape("\n".join(tail)),
+            )
+        )
+    return "\n".join(parts)
 
 
 def render_wifi(
@@ -345,6 +394,8 @@ class Handler(BaseHTTPRequestHandler):
             self._wifi_scan(lang)
         elif path == "/wifi-connect":
             self._wifi_connect(form, lang)
+        elif path == "/update":
+            self._update(lang)
         elif path == "/service":
             action = form.get("action", ["restart"])[0]
             if action in ("start", "stop", "restart"):
@@ -383,6 +434,38 @@ class Handler(BaseHTTPRequestHandler):
                 f"{i18n.t(lang, 'colon')}<b>{html.escape(ssid)}</b></p>"
             )
         self._send(render(config.load(), lang, wifi_result=result))
+
+    def _update(self, lang: str):
+        """Start update.sh detached: it restarts this very service at the end."""
+        try:
+            log = open(UPDATE_LOG, "w")
+        except OSError as exc:
+            self._send(
+                render(
+                    config.load(),
+                    lang,
+                    update_result=f"<p class='off'>{html.escape(str(exc))}</p>",
+                )
+            )
+            return
+
+        with log:
+            subprocess.Popen(
+                ["/bin/bash", UPDATE_SCRIPT],
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                cwd=REPO_ROOT,
+            )
+        self._send(
+            render(
+                config.load(),
+                lang,
+                update_result=(
+                    f"<p class='on'>{html.escape(i18n.t(lang, 'update_started'))}</p>"
+                ),
+            )
+        )
 
     def _save(self, form: dict, lang: str):
         cfg = config.load()

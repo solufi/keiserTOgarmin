@@ -88,6 +88,12 @@ point (`KeiserToGarmin` / `keiser2garmin`, page at `http://10.42.0.1:8080/`) so
 credentials can be entered from a phone; the profile is created with
 `autoconnect no`, so a configured Pi never comes up as an AP again.
 
+Its "Update" button runs `deploy/update.sh` detached (`start_new_session=True`,
+output to `/var/log/ktog-update.log`): the script re-runs the installer and
+restarts `freefitness-web` itself, which would otherwise cut the HTTP response
+mid-update. The page shows the tail of that log, so the result survives the
+restart.
+
 Being unauthenticated and able to restart a root service, it belongs on a
 trusted LAN only; disable it with
 `sudo systemctl disable --now freefitness-web`.

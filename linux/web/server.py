@@ -248,7 +248,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length") or 0)
-        form = urllib.parse.parse_qs(self.rfile.read(length).decode())
+        # keep_blank_values: a number input the browser considers invalid is
+        # submitted empty, and dropping it would look like "bike_id 0".
+        form = urllib.parse.parse_qs(
+            self.rfile.read(length).decode(), keep_blank_values=True
+        )
         path = urllib.parse.urlparse(self.path).path
         lang = self._lang()
 
@@ -267,7 +271,7 @@ class Handler(BaseHTTPRequestHandler):
     def _save(self, form: dict, lang: str):
         cfg = config.load()
         try:
-            bike_id = int(form.get("bike_id", ["0"])[0])
+            bike_id = int(form.get("bike_id", [""])[0])
         except ValueError:
             bike_id = cfg.bike_id
         cfg.bike_id = max(0, min(255, bike_id))

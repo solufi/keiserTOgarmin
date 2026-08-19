@@ -85,8 +85,10 @@ export default function ConditionsPage() {
         <h2 className="text-xl font-semibold">Marques citées</h2>
         <p>
           Keiser, Échelon, Garmin et ANT+ sont des marques de leurs propriétaires
-          respectifs, citées à des fins de compatibilité. {site.legalName} n&apos;est
-          affilié à aucune d&apos;entre elles et n&apos;est pas un revendeur agréé.
+          respectifs, citées à des fins de compatibilité.
+          {` ${site.legalName} `}
+          n&apos;est affilié à aucune d&apos;entre elles et n&apos;est pas un revendeur
+          agréé.
         </p>
       </section>
     </div>

@@ -112,6 +112,8 @@ boot. Tu le branches, tu attends une trentaine de secondes, tu pédales.
   fonctionnement interne, détails des protocoles.
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) — encodage des trames BLE/ANT+ et
   architecture du code.
+- [`site/README.md`](site/README.md) — site transactionnel (Next.js + Stripe)
+  pour revendre des boîtiers préconfigurés. Indépendant du logiciel ci-dessus.
 
 Bon à savoir : le Keiser transmet la puissance et la cadence, mais pas la
 vitesse. Celle-ci est calculée à partir de la puissance par un modèle physique,

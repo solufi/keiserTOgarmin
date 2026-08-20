@@ -45,6 +45,11 @@ http://ktog.local:8080/
 La page est en français ou en anglais : le lien **FR | EN** en haut à droite
 mémorise ton choix.
 
+Au premier démarrage, un **assistant pas-à-pas** s'ouvre : Wi-Fi, Bike ID, mode
+de sortie, puis appairage de la montre. Le bouton *Passer le tutoriel* va
+directement à la page de configuration ; le lien *Revoir le tutoriel*, en bas de
+cette page, le rouvre plus tard.
+
 1. **Cherche les vélos** et pédale : le tien est celui dont la cadence bouge.
    Note son *Bike ID*.
 2. Saisis ce Bike ID.

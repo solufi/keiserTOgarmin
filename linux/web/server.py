@@ -35,6 +35,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 UPDATE_SCRIPT = os.path.join(REPO_ROOT, "linux", "deploy", "update.sh")
 UPDATE_LOG = "/var/log/ktog-update.log"
 UPDATE_LOG_LINES = 20
+HOTSPOT_LOG_LINES = 10
 
 # key -> (protocols, ble_profiles, pairing-hint string key)
 MODES = {
@@ -286,6 +287,8 @@ def render_wifi(
         )
     )
 
+    parts.append(render_hotspot_controls(lang))
+
     if networks is not None:
         if not networks:
             parts.append(f"<p>{html.escape(i18n.t(lang, 'wifi_empty'))}</p>")
@@ -317,6 +320,45 @@ def render_wifi(
                 )
             )
 
+    return "\n".join(parts)
+
+
+def render_hotspot_controls(lang: str) -> str:
+    """Access point button (raise or tear down) plus the always-on switch."""
+    on = wifi.hotspot_active()
+    always = wifi.hotspot_always()
+    parts = [
+        '<form method="post" action="/hotspot?lang={lang}">'
+        '<button class="secondary" name="action" value="{action}" type="submit">'
+        "{label}</button></form>"
+        '<p class="hint">{hint}</p>'.format(
+            lang=lang,
+            action="stop" if on else "start",
+            label=html.escape(i18n.t(lang, "hotspot_stop" if on else "hotspot_start")),
+            hint=html.escape(
+                i18n.t(lang, "hotspot_stop_hint" if on else "hotspot_start_hint")
+            ),
+        ),
+        '<form method="post" action="/hotspot-always?lang={lang}">'
+        '<label><input type="checkbox" name="always" {checked}> {label}</label>'
+        '<button class="secondary" type="submit">{save}</button></form>'
+        '<p class="hint">{hint}</p>'.format(
+            lang=lang,
+            checked="checked" if always else "",
+            label=html.escape(i18n.t(lang, "hotspot_always")),
+            save=html.escape(i18n.t(lang, "save_short")),
+            hint=html.escape(i18n.t(lang, "hotspot_always_hint")),
+        ),
+    ]
+
+    tail = wifi.hotspot_log(HOTSPOT_LOG_LINES)
+    if tail:
+        parts.append(
+            "<p>{title}</p><pre>{log}</pre>".format(
+                title=html.escape(i18n.t(lang, "hotspot_log")),
+                log=html.escape("\n".join(tail)),
+            )
+        )
     return "\n".join(parts)
 
 
@@ -394,6 +436,10 @@ class Handler(BaseHTTPRequestHandler):
             self._wifi_scan(lang)
         elif path == "/wifi-connect":
             self._wifi_connect(form, lang)
+        elif path == "/hotspot":
+            self._hotspot(form, lang)
+        elif path == "/hotspot-always":
+            self._hotspot_always(form, lang)
         elif path == "/update":
             self._update(lang)
         elif path == "/service":
@@ -433,6 +479,31 @@ class Handler(BaseHTTPRequestHandler):
                 f"<p class='on'>{html.escape(i18n.t(lang, 'wifi_ok'))}"
                 f"{i18n.t(lang, 'colon')}<b>{html.escape(ssid)}</b></p>"
             )
+        self._send(render(config.load(), lang, wifi_result=result))
+
+    def _hotspot(self, form: dict, lang: str):
+        """Switch the access point on or off. The answer goes out first: the
+        switch drops whichever network is carrying this request."""
+        on = form.get("action", ["start"])[0] == "start"
+        try:
+            wifi.switch_hotspot(on)
+        except Exception as exc:  # unwritable log, missing script
+            result = f"<p class='off'>{html.escape(str(exc))}</p>"
+        else:
+            result = "<p class='on'>{msg}</p>".format(
+                msg=html.escape(
+                    i18n.t(lang, "hotspot_starting" if on else "hotspot_stopping")
+                )
+            )
+        self._send(render(config.load(), lang, wifi_result=result))
+
+    def _hotspot_always(self, form: dict, lang: str):
+        try:
+            wifi.set_hotspot_always("always" in form)
+        except Exception as exc:
+            result = f"<p class='off'>{html.escape(str(exc))}</p>"
+        else:
+            result = f"<p class='on'>{html.escape(i18n.t(lang, 'saved'))}</p>"
         self._send(render(config.load(), lang, wifi_result=result))
 
     def _update(self, lang: str):

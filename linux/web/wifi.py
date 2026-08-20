@@ -13,12 +13,22 @@ scan results: joining it from itself makes no sense and it is the network the
 user is most likely browsing from.
 """
 
+import os
 import re
 import subprocess
+import tempfile
 from dataclasses import dataclass
 
 HOTSPOT_CONNECTION = "ktog-setup"
 WIFI_TIMEOUT = 45  # nmcli blocks until the association succeeds or gives up
+
+_DEPLOY_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "deploy"
+)
+HOTSPOT_SCRIPT = os.path.join(_DEPLOY_DIR, "ktog-hotspot.sh")
+HOTSPOT_DEFAULTS = "/etc/default/ktog-hotspot"
+HOTSPOT_LOG = "/var/log/ktog-hotspot.log"
+ALWAYS_RE = re.compile(r"^\s*KTOG_HOTSPOT_ALWAYS\s*=")
 
 
 @dataclass
@@ -121,5 +131,68 @@ def connect(ssid: str, password: str) -> None:
     _nmcli("connection", "modify", ssid, "connection.autoconnect", "yes")
 
 
-def stop_hotspot() -> None:
-    _nmcli("connection", "down", HOTSPOT_CONNECTION)
+def hotspot_always() -> bool:
+    """Is the access point configured to come up at every boot?"""
+    try:
+        with open(HOTSPOT_DEFAULTS) as handle:
+            for line in handle:
+                if ALWAYS_RE.match(line):
+                    _, _, value = line.partition("=")
+                    return value.strip().strip('"').strip("'") == "1"
+    except OSError:
+        pass
+    return False
+
+
+def set_hotspot_always(enabled: bool) -> None:
+    """Rewrite only the KTOG_HOTSPOT_ALWAYS line, atomically."""
+    try:
+        with open(HOTSPOT_DEFAULTS) as handle:
+            lines = handle.readlines()
+    except OSError:
+        lines = []
+
+    new_line = f"KTOG_HOTSPOT_ALWAYS={1 if enabled else 0}\n"
+    for i, line in enumerate(lines):
+        if ALWAYS_RE.match(line):
+            lines[i] = new_line
+            break
+    else:
+        lines.append(new_line)
+
+    directory = os.path.dirname(HOTSPOT_DEFAULTS) or "."
+    fd, tmp = tempfile.mkstemp(dir=directory)
+    try:
+        with os.fdopen(fd, "w") as handle:
+            handle.writelines(lines)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, HOTSPOT_DEFAULTS)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+
+
+def switch_hotspot(on: bool) -> None:
+    """Raise or tear down the access point, without waiting for the result.
+
+    Both directions cut the network the browser is talking over (the Wi-Fi
+    client connection, or the access point itself), so the HTTP answer must be
+    sent before the switch happens: the script runs detached and its output
+    goes to HOTSPOT_LOG for the page to show afterwards.
+    """
+    log = open(HOTSPOT_LOG, "w")
+    with log:
+        subprocess.Popen(
+            ["/bin/bash", HOTSPOT_SCRIPT, "--now" if on else "--off"],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+
+def hotspot_log(lines: int) -> list[str]:
+    try:
+        with open(HOTSPOT_LOG) as handle:
+            return handle.read().splitlines()[-lines:]
+    except OSError:  # never switched from the page
+        return []

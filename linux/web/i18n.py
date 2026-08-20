@@ -71,6 +71,26 @@ STRINGS = {
         "wifi_open": "réseau ouvert",
         "wifi_unavailable": "NetworkManager est absent : configure le Wi-Fi"
         " avec raspi-config.",
+        "save_short": "Enregistrer",
+        "saved": "Enregistré.",
+        "hotspot_start": "Activer le point d'accès",
+        "hotspot_start_hint": "Coupe le Wi-Fi et diffuse le réseau"
+        " « KeiserToGarmin » (mot de passe keiser2garmin). Connecte ton"
+        " téléphone à ce réseau puis ouvre http://10.42.0.1:8080/ — cette page"
+        " ne répondra plus sur ton Wi-Fi habituel.",
+        "hotspot_stop": "Revenir au Wi-Fi",
+        "hotspot_stop_hint": "Arrête le point d'accès et rejoint le dernier"
+        " Wi-Fi connu. Rebascule ton téléphone sur ce Wi-Fi puis ouvre"
+        " http://ktog.local:8080/",
+        "hotspot_starting": "Point d'accès en cours de démarrage. Connecte-toi"
+        " au réseau « KeiserToGarmin » puis ouvre http://10.42.0.1:8080/",
+        "hotspot_stopping": "Point d'accès arrêté. Rejoins ton Wi-Fi puis ouvre"
+        " http://ktog.local:8080/",
+        "hotspot_always": "Toujours en point d'accès au démarrage",
+        "hotspot_always_hint": "Utile en salle : le Pi n'attend plus le Wi-Fi"
+        " et diffuse son réseau dès l'allumage. Décoche pour qu'il rejoigne"
+        " d'abord un réseau connu, avec le point d'accès en secours.",
+        "hotspot_log": "Journal du point d'accès",
         "update": "Mise à jour",
         "update_button": "Mettre à jour",
         "update_hint": "Récupère la dernière version et relance l'installeur."
@@ -139,6 +159,26 @@ STRINGS = {
         "wifi_open": "open network",
         "wifi_unavailable": "NetworkManager is missing: configure Wi-Fi with"
         " raspi-config.",
+        "save_short": "Save",
+        "saved": "Saved.",
+        "hotspot_start": "Start the access point",
+        "hotspot_start_hint": "Drops Wi-Fi and broadcasts the “KeiserToGarmin”"
+        " network (password keiser2garmin). Join it from your phone and open"
+        " http://10.42.0.1:8080/ — this page will stop answering on your usual"
+        " Wi-Fi.",
+        "hotspot_stop": "Back to Wi-Fi",
+        "hotspot_stop_hint": "Stops the access point and rejoins the last known"
+        " Wi-Fi. Move your phone back to that Wi-Fi and open"
+        " http://ktog.local:8080/",
+        "hotspot_starting": "Access point starting. Join the “KeiserToGarmin”"
+        " network and open http://10.42.0.1:8080/",
+        "hotspot_stopping": "Access point stopped. Rejoin your Wi-Fi and open"
+        " http://ktog.local:8080/",
+        "hotspot_always": "Always start the access point at boot",
+        "hotspot_always_hint": "Handy at the gym: the Pi stops waiting for"
+        " Wi-Fi and broadcasts its own network right away. Uncheck it to join a"
+        " known network first, with the access point as a fallback.",
+        "hotspot_log": "Access point log",
         "update": "Update",
         "update_button": "Update now",
         "update_hint": "Fetches the latest version and re-runs the installer."

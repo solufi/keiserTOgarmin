@@ -88,6 +88,14 @@ point (`KeiserToGarmin` / `keiser2garmin`, page at `http://10.42.0.1:8080/`) so
 credentials can be entered from a phone; the profile is created with
 `autoconnect no`, so a configured Pi never comes up as an AP again.
 
+The same script also takes `--now` (free the radio by disconnecting Wi-Fi, then
+raise the AP) and `--off` (drop the AP, `nmcli device connect` so autoconnect
+resumes), which is what the page's access point button runs — detached, output
+to `/var/log/ktog-hotspot.log`, because either direction kills the network
+carrying the request. `KTOG_HOTSPOT_ALWAYS=1` in `/etc/default/ktog-hotspot`
+(the checkbox on the page) skips the boot wait entirely and advertises the AP
+even when a known network is in range: at the gym there is no network to join.
+
 Its "Update" button runs `deploy/update.sh` detached (`start_new_session=True`,
 output to `/var/log/ktog-update.log`): the script re-runs the installer and
 restarts `freefitness-web` itself, which would otherwise cut the HTTP response

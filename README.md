@@ -45,6 +45,11 @@ http://ktog.local:8080/
 La page est en français ou en anglais : le lien **FR | EN** en haut à droite
 mémorise ton choix.
 
+Au premier démarrage, un **assistant pas-à-pas** s'ouvre : Wi-Fi, Bike ID, mode
+de sortie, puis appairage de la montre. Le bouton *Passer le tutoriel* va
+directement à la page de configuration ; le lien *Revoir le tutoriel*, en bas de
+cette page, le rouvre plus tard.
+
 1. **Cherche les vélos** et pédale : le tien est celui dont la cadence bouge.
    Note son *Bike ID*.
 2. Saisis ce Bike ID.
@@ -88,6 +93,22 @@ quarantaine de secondes :
 
 Tu t'y connectes avec le téléphone, tu configures le Wi-Fi depuis la page, et le
 réseau de secours disparaît. Aucun câble réseau, aucun clavier nécessaire.
+
+Le même panneau permet de le piloter à la main :
+
+- **Activer le point d'accès** coupe le Wi-Fi et diffuse `KeiserToGarmin` tout
+  de suite (utile en salle, où il n'y a pas de réseau) ; **Revenir au Wi-Fi**
+  fait l'inverse.
+- **Toujours en point d'accès au démarrage** évite l'attente de 45 s : le Pi
+  diffuse son réseau dès l'allumage. C'est `KTOG_HOTSPOT_ALWAYS` dans
+  `/etc/default/ktog-hotspot`, où le SSID et le mot de passe se changent aussi.
+
+En ligne de commande : `sudo ~/keiserTOgarmin/linux/deploy/ktog-hotspot.sh --now`
+(ou `--off`).
+
+Si le point d'accès ne démarre pas, c'est presque toujours le pays Wi-Fi qui
+n'est pas défini (`sudo raspi-config` → *Localisation* → *WLAN Country*) : sans
+lui, la radio refuse le mode point d'accès. Le journal du bouton l'affiche.
 
 ## Appairer la montre
 

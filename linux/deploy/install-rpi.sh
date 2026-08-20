@@ -88,6 +88,9 @@ udevadm trigger --subsystem-match=usb || true
 if [[ $INSTALL_SERVICE -eq 1 ]]; then
     if [[ -f "$DEFAULTS_FILE" ]]; then
         echo "==> Keeping existing $DEFAULTS_FILE"
+        # Already configured: don't greet an existing user with the wizard.
+        mkdir -p /var/lib/ktog
+        touch /var/lib/ktog/setup-done
     else
         echo "==> Writing $DEFAULTS_FILE"
         install -m 0644 "$DEPLOY_DIR/freefitness.default" "$DEFAULTS_FILE"
@@ -109,6 +112,12 @@ if [[ $INSTALL_SERVICE -eq 1 ]]; then
     # The fallback access point is pointless without NetworkManager (older Pi
     # OS images still use dhcpcd/wpa_supplicant).
     if command -v nmcli >/dev/null; then
+        if [[ -f /etc/default/ktog-hotspot ]]; then
+            echo "==> Keeping existing /etc/default/ktog-hotspot"
+        else
+            install -m 0644 "$DEPLOY_DIR/ktog-hotspot.default" \
+                /etc/default/ktog-hotspot
+        fi
         systemctl enable ktog-hotspot.service
     else
         echo "==> NetworkManager not found, skipping the Wi-Fi setup hotspot"
@@ -121,6 +130,8 @@ if [[ $INSTALL_SERVICE -eq 1 ]]; then
         echo "If the Pi ever boots without Wi-Fi, it raises the access point"
         echo "'KeiserToGarmin' (password keiser2garmin): join it and open"
         echo "    http://10.42.0.1:8080/"
+        echo "The page can also raise it on demand, or always at boot"
+        echo "(KTOG_HOTSPOT_ALWAYS in /etc/default/ktog-hotspot)."
     fi
     echo "or edit $DEFAULTS_FILE by hand, then:  sudo systemctl start freefitness"
 fi

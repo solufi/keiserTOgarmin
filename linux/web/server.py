@@ -35,6 +35,8 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 UPDATE_SCRIPT = os.path.join(REPO_ROOT, "linux", "deploy", "update.sh")
 UPDATE_LOG = "/var/log/ktog-update.log"
 UPDATE_LOG_LINES = 20
+HOTSPOT_LOG_LINES = 10
+WIZARD_STEPS = 4
 
 # key -> (protocols, ble_profiles, pairing-hint string key)
 MODES = {
@@ -79,33 +81,36 @@ def journal(lang: str) -> str:
     return result.stdout.strip() or i18n.t(lang, "no_output")
 
 
+STYLE = """
+ body { font-family: system-ui, sans-serif; margin: 0 auto; padding: 1.5rem; max-width: 40rem;
+        background: #14161a; color: #e8e8e8; }
+ h1 { font-size: 1.3rem; }
+ fieldset { border: 1px solid #333; border-radius: .5rem; margin: 0 0 1rem; padding: 1rem; }
+ label { display: block; margin: .4rem 0; }
+ input[type=number] { width: 6rem; font-size: 1.1rem; padding: .3rem; }
+ button { font-size: 1rem; padding: .6rem 1rem; margin-right: .5rem; border: 0;
+          border-radius: .4rem; background: #2d6cdf; color: #fff; }
+ button.secondary { background: #444; }
+ pre { background: #0c0e11; padding: .8rem; border-radius: .4rem; overflow-x: auto;
+       font-size: .8rem; line-height: 1.35; }
+ .state { font-weight: 600; }
+ .on { color: #4ade80; } .off { color: #f87171; }
+ table { border-collapse: collapse; width: 100%; }
+ td, th { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid #333; }
+ .hint { margin: 0 0 .9rem 1.6rem; font-size: .85rem; color: #a0a6b0; }
+ .langs { float: right; font-size: .9rem; }
+ a { color: #8ab4f8; }
+ .langs b { color: #e8e8e8; }
+ .step { color: #a0a6b0; font-size: .9rem; }
+"""
+
 PAGE = """<!doctype html>
 <html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Keiser to Garmin</title>
-<style>
- body {{ font-family: system-ui, sans-serif; margin: 0 auto; padding: 1.5rem; max-width: 40rem;
-        background: #14161a; color: #e8e8e8; }}
- h1 {{ font-size: 1.3rem; }}
- fieldset {{ border: 1px solid #333; border-radius: .5rem; margin: 0 0 1rem; padding: 1rem; }}
- label {{ display: block; margin: .4rem 0; }}
- input[type=number] {{ width: 6rem; font-size: 1.1rem; padding: .3rem; }}
- button {{ font-size: 1rem; padding: .6rem 1rem; margin-right: .5rem; border: 0;
-           border-radius: .4rem; background: #2d6cdf; color: #fff; }}
- button.secondary {{ background: #444; }}
- pre {{ background: #0c0e11; padding: .8rem; border-radius: .4rem; overflow-x: auto;
-        font-size: .8rem; line-height: 1.35; }}
- .state {{ font-weight: 600; }}
- .on {{ color: #4ade80; }} .off {{ color: #f87171; }}
- table {{ border-collapse: collapse; width: 100%; }}
- td, th {{ text-align: left; padding: .3rem .5rem; border-bottom: 1px solid #333; }}
- .hint {{ margin: 0 0 .9rem 1.6rem; font-size: .85rem; color: #a0a6b0; }}
- .langs {{ float: right; font-size: .9rem; }}
- a {{ color: #8ab4f8; }}
- .langs b {{ color: #e8e8e8; }}
-</style>
+<style>{style}</style>
 </head>
 <body>
 <div class="langs">{lang_links}</div>
@@ -153,7 +158,29 @@ PAGE = """<!doctype html>
 
 <h2>{journal_title}</h2>
 <pre>{journal}</pre>
-<p><a href="/?lang={lang}">{refresh}</a></p>
+<p><a href="/?lang={lang}">{refresh}</a>
+ &middot; <a href="/setup?lang={lang}">{wizard_link}</a></p>
+</body>
+</html>
+"""
+
+WIZARD_PAGE = """<!doctype html>
+<html lang="{lang}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keiser to Garmin</title>
+<style>{style}</style>
+</head>
+<body>
+<div class="langs">{lang_links}</div>
+<h1>{title}</h1>
+<p class="step">{step_label}</p>
+{body}
+<form method="post" action="/setup?lang={lang}">
+ <button class="secondary" name="action" value="skip" type="submit">{skip}</button>
+</form>
+<p class="hint">{skip_hint}</p>
 </body>
 </html>
 """
@@ -168,33 +195,12 @@ def render(
     update_result: str = "",
 ) -> bytes:
     active = service_active()
-    selected = mode_of(cfg)
     wifi_panel = render_wifi(lang, wifi_result, networks)
-
-    radios = []
-    for key, (_protocols, _profiles, hint_key) in MODES.items():
-        radios.append(
-            '<label><input type="radio" name="mode" value="{key}" {checked}> {label}</label>'
-            '<p class="hint">{pairing}{colon}{hint}</p>'.format(
-                key=key,
-                checked="checked" if key == selected else "",
-                label=html.escape(i18n.t(lang, mode_label_key(key))),
-                pairing=html.escape(i18n.t(lang, "pairing")),
-                colon=i18n.t(lang, "colon"),
-                # Hints carry <b> markup on purpose; they are author-written,
-                # not user input.
-                hint=i18n.t(lang, hint_key),
-            )
-        )
-
-    lang_links = " | ".join(
-        f"<b>{code.upper()}</b>" if code == lang else f'<a href="/?lang={code}">{code.upper()}</a>'
-        for code in i18n.LANGS
-    )
 
     return PAGE.format(
         lang=lang,
-        lang_links=lang_links,
+        style=STYLE,
+        lang_links=lang_links(lang, "/"),
         title=html.escape(i18n.t(lang, "title")),
         service=html.escape(i18n.t(lang, "service")),
         colon=i18n.t(lang, "colon"),
@@ -206,7 +212,7 @@ def render(
         mock=html.escape(i18n.t(lang, "mock")),
         mock_checked="checked" if cfg.mock else "",
         output=html.escape(i18n.t(lang, "output")),
-        mode_radios="\n".join(radios),
+        mode_radios=render_mode_radios(lang, mode_of(cfg)),
         save=html.escape(i18n.t(lang, "save")),
         scan_button=html.escape(i18n.t(lang, "scan_button")),
         scan_result=scan_result,
@@ -224,7 +230,34 @@ def render(
         journal_title=html.escape(i18n.t(lang, "journal")),
         journal=html.escape(journal(lang)),
         refresh=html.escape(i18n.t(lang, "refresh")),
+        wizard_link=html.escape(i18n.t(lang, "wizard_link")),
     ).encode()
+
+
+def lang_links(lang: str, page: str) -> str:
+    return " | ".join(
+        f"<b>{code.upper()}</b>"
+        if code == lang
+        else f'<a href="{page}?lang={code}">{code.upper()}</a>'
+        for code in i18n.LANGS
+    )
+
+
+def render_mode_radios(lang: str, selected: str) -> str:
+    return "\n".join(
+        '<label><input type="radio" name="mode" value="{key}" {checked}> {label}</label>'
+        '<p class="hint">{pairing}{colon}{hint}</p>'.format(
+            key=key,
+            checked="checked" if key == selected else "",
+            label=html.escape(i18n.t(lang, mode_label_key(key))),
+            pairing=html.escape(i18n.t(lang, "pairing")),
+            colon=i18n.t(lang, "colon"),
+            # Hints carry <b> markup on purpose; they are author-written, not
+            # user input.
+            hint=i18n.t(lang, hint_key),
+        )
+        for key, (_protocols, _profiles, hint_key) in MODES.items()
+    )
 
 
 def revision() -> str:
@@ -255,8 +288,14 @@ def render_update(lang: str, result: str = "") -> str:
 
 
 def render_wifi(
-    lang: str, result: str = "", networks: list[wifi.Network] | None = None
+    lang: str,
+    result: str = "",
+    networks: list[wifi.Network] | None = None,
+    wizard: bool = False,
 ) -> str:
+    """Wi-Fi state, scan and connection form. In wizard mode the forms come
+    back to the wizard instead of the configuration page."""
+    query = f"lang={lang}&wizard=1" if wizard else f"lang={lang}"
     if not wifi.available():
         return f"<p>{html.escape(i18n.t(lang, 'wifi_unavailable'))}</p>"
 
@@ -280,11 +319,13 @@ def render_wifi(
             )
 
     parts.append(
-        '<form method="post" action="/wifi-scan?lang={lang}">'
+        '<form method="post" action="/wifi-scan?{query}">'
         '<button class="secondary" type="submit">{label}</button></form>'.format(
-            lang=lang, label=html.escape(i18n.t(lang, "wifi_scan_button"))
+            query=query, label=html.escape(i18n.t(lang, "wifi_scan_button"))
         )
     )
+
+    parts.append(render_hotspot_controls(lang, query))
 
     if networks is not None:
         if not networks:
@@ -304,12 +345,12 @@ def render_wifi(
                 for net in networks
             )
             parts.append(
-                '<form method="post" action="/wifi-connect?lang={lang}">'
+                '<form method="post" action="/wifi-connect?{query}">'
                 "{radios}"
                 '<label>{password}<input type="password" name="password"></label>'
                 '<button type="submit">{connect}</button>'
                 "</form><p class='hint'>{select}</p>".format(
-                    lang=lang,
+                    query=query,
                     radios=radios,
                     password=html.escape(i18n.t(lang, "wifi_password")) + " ",
                     connect=html.escape(i18n.t(lang, "wifi_connect")),
@@ -317,6 +358,45 @@ def render_wifi(
                 )
             )
 
+    return "\n".join(parts)
+
+
+def render_hotspot_controls(lang: str, query: str) -> str:
+    """Access point button (raise or tear down) plus the always-on switch."""
+    on = wifi.hotspot_active()
+    always = wifi.hotspot_always()
+    parts = [
+        '<form method="post" action="/hotspot?{query}">'
+        '<button class="secondary" name="action" value="{action}" type="submit">'
+        "{label}</button></form>"
+        '<p class="hint">{hint}</p>'.format(
+            query=query,
+            action="stop" if on else "start",
+            label=html.escape(i18n.t(lang, "hotspot_stop" if on else "hotspot_start")),
+            hint=html.escape(
+                i18n.t(lang, "hotspot_stop_hint" if on else "hotspot_start_hint")
+            ),
+        ),
+        '<form method="post" action="/hotspot-always?{query}">'
+        '<label><input type="checkbox" name="always" {checked}> {label}</label>'
+        '<button class="secondary" type="submit">{save}</button></form>'
+        '<p class="hint">{hint}</p>'.format(
+            query=query,
+            checked="checked" if always else "",
+            label=html.escape(i18n.t(lang, "hotspot_always")),
+            save=html.escape(i18n.t(lang, "save_short")),
+            hint=html.escape(i18n.t(lang, "hotspot_always_hint")),
+        ),
+    ]
+
+    tail = wifi.hotspot_log(HOTSPOT_LOG_LINES)
+    if tail:
+        parts.append(
+            "<p>{title}</p><pre>{log}</pre>".format(
+                title=html.escape(i18n.t(lang, "hotspot_log")),
+                log=html.escape("\n".join(tail)),
+            )
+        )
     return "\n".join(parts)
 
 
@@ -355,6 +435,126 @@ def render_scan(lang: str) -> str:
     )
 
 
+def bike_id_of(form: dict, cfg: config.Config) -> int:
+    """Submitted bike ID, or the stored one when the field is empty/invalid."""
+    try:
+        return max(0, min(255, int(form.get("bike_id", [""])[0])))
+    except ValueError:
+        return cfg.bike_id
+
+
+def wizard_nav(lang: str, step: int, last: bool) -> str:
+    """Step form wrapper end: hidden step plus back/next (or finish)."""
+    back = (
+        '<button class="secondary" name="action" value="back" type="submit">'
+        f'{html.escape(i18n.t(lang, "wizard_back"))}</button>'
+        if step > 1
+        else ""
+    )
+    return (
+        f'<input type="hidden" name="step" value="{step}">'
+        f"{back}"
+        '<button name="action" value="{action}" type="submit">{label}</button>'.format(
+            action="finish" if last else "next",
+            label=html.escape(i18n.t(lang, "wizard_finish" if last else "wizard_next")),
+        )
+    )
+
+
+def wizard_step_body(
+    step: int,
+    lang: str,
+    cfg: config.Config,
+    wifi_result: str,
+    networks: list[wifi.Network] | None,
+    scan_result: str,
+) -> tuple[str, str]:
+    """(legend, inner html) of one wizard step."""
+    if step == 1:
+        # The Wi-Fi panel carries its own forms, so it stays outside the step
+        # form: nested forms are not valid HTML.
+        return (
+            i18n.t(lang, "wifi"),
+            "<p class='hint'>{hint}</p>{panel}".format(
+                hint=html.escape(i18n.t(lang, "wizard_wifi_hint")),
+                panel=render_wifi(lang, wifi_result, networks, wizard=True),
+            ),
+        )
+    if step == 2:
+        return (
+            i18n.t(lang, "bike"),
+            '<p class="hint">{hint}</p>'
+            '<button class="secondary" name="action" value="scan" type="submit">'
+            "{scan}</button>"
+            '<label>{label} <input type="number" name="bike_id" min="0" max="255"'
+            ' value="{bike_id}"></label>{result}'.format(
+                hint=html.escape(i18n.t(lang, "wizard_bike_hint")),
+                scan=html.escape(i18n.t(lang, "scan_button")),
+                label=html.escape(i18n.t(lang, "bike_id")),
+                bike_id=cfg.bike_id,
+                result=scan_result,
+            ),
+        )
+    if step == 3:
+        return (
+            i18n.t(lang, "output"),
+            "<p class='hint'>{hint}</p>{radios}".format(
+                hint=html.escape(i18n.t(lang, "wizard_mode_hint")),
+                radios=render_mode_radios(lang, mode_of(cfg)),
+            ),
+        )
+    return (
+        i18n.t(lang, "pairing"),
+        "<p>{summary}{colon}<b>{bike_id_label} {bike_id}</b> — <b>{mode}</b></p>"
+        "<p class='hint'>{pairing}{colon}{hint}</p><p class='hint'>{done}</p>".format(
+            summary=html.escape(i18n.t(lang, "wizard_summary")),
+            colon=i18n.t(lang, "colon"),
+            bike_id_label=html.escape(i18n.t(lang, "bike_id")),
+            bike_id=cfg.bike_id,
+            mode=html.escape(i18n.t(lang, mode_label_key(mode_of(cfg)))),
+            pairing=html.escape(i18n.t(lang, "pairing")),
+            hint=i18n.t(lang, MODES[mode_of(cfg)][2]),
+            done=html.escape(i18n.t(lang, "wizard_finish_hint")),
+        ),
+    )
+
+
+def render_wizard(
+    step: int,
+    lang: str,
+    cfg: config.Config,
+    wifi_result: str = "",
+    networks: list[wifi.Network] | None = None,
+    scan_result: str = "",
+    message: str = "",
+) -> bytes:
+    legend, inner = wizard_step_body(step, lang, cfg, wifi_result, networks, scan_result)
+    fieldset = "<fieldset><legend>{legend}</legend>{inner}</fieldset>".format(
+        legend=html.escape(legend), inner=inner
+    )
+    fieldset = message + fieldset
+    nav = wizard_nav(lang, step, last=step == WIZARD_STEPS)
+    if step == 1:
+        body = f'{fieldset}<form method="post" action="/setup?lang={lang}">{nav}</form>'
+    else:
+        body = (
+            f'<form method="post" action="/setup?lang={lang}">{fieldset}{nav}</form>'
+        )
+
+    return WIZARD_PAGE.format(
+        lang=lang,
+        style=STYLE,
+        lang_links=lang_links(lang, "/setup"),
+        title=html.escape(i18n.t(lang, "wizard_title")),
+        step_label=html.escape(
+            i18n.t(lang, "wizard_step").format(step=step, total=WIZARD_STEPS)
+        ),
+        body=body,
+        skip=html.escape(i18n.t(lang, "wizard_skip")),
+        skip_hint=html.escape(i18n.t(lang, "wizard_skip_hint")),
+    ).encode()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "freefitness-web"
 
@@ -370,11 +570,23 @@ class Handler(BaseHTTPRequestHandler):
                 return i18n.normalize(value)
         return i18n.DEFAULT_LANG
 
+    def _wizard(self) -> bool:
+        """Should a Wi-Fi or hotspot form answer inside the wizard?"""
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        return query.get("wizard", [""])[0] == "1"
+
     def do_GET(self):
-        if urllib.parse.urlparse(self.path).path != "/":
+        path = urllib.parse.urlparse(self.path).path
+        lang = self._lang()
+        if path == "/setup":
+            self._send(render_wizard(1, lang, config.load()))
+        elif path == "/":
+            if not config.setup_done():
+                self._redirect(lang, "/setup")
+                return
+            self._send(render(config.load(), lang))
+        else:
             self.send_error(404)
-            return
-        self._send(render(config.load(), self._lang()))
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length") or 0)
@@ -394,6 +606,12 @@ class Handler(BaseHTTPRequestHandler):
             self._wifi_scan(lang)
         elif path == "/wifi-connect":
             self._wifi_connect(form, lang)
+        elif path == "/hotspot":
+            self._hotspot(form, lang)
+        elif path == "/hotspot-always":
+            self._hotspot_always(form, lang)
+        elif path == "/setup":
+            self._setup(form, lang)
         elif path == "/update":
             self._update(lang)
         elif path == "/service":
@@ -404,6 +622,16 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def _wifi_page(
+        self, lang: str, result: str, networks: list[wifi.Network] | None = None
+    ):
+        """Answer a Wi-Fi form, on whichever page it was submitted from."""
+        cfg = config.load()
+        if self._wizard():
+            self._send(render_wizard(1, lang, cfg, wifi_result=result, networks=networks))
+        else:
+            self._send(render(cfg, lang, wifi_result=result, networks=networks))
+
     def _wifi_scan(self, lang: str):
         try:
             networks = wifi.scan()
@@ -413,7 +641,7 @@ class Handler(BaseHTTPRequestHandler):
                 f"<p class='off'>{html.escape(i18n.t(lang, 'scan_failed'))}"
                 f"{i18n.t(lang, 'colon')}{html.escape(str(exc))}</p>"
             )
-        self._send(render(config.load(), lang, wifi_result=error, networks=networks))
+        self._wifi_page(lang, error, networks)
 
     def _wifi_connect(self, form: dict, lang: str):
         ssid = form.get("ssid", [""])[0]
@@ -433,7 +661,87 @@ class Handler(BaseHTTPRequestHandler):
                 f"<p class='on'>{html.escape(i18n.t(lang, 'wifi_ok'))}"
                 f"{i18n.t(lang, 'colon')}<b>{html.escape(ssid)}</b></p>"
             )
-        self._send(render(config.load(), lang, wifi_result=result))
+        self._wifi_page(lang, result)
+
+    def _hotspot(self, form: dict, lang: str):
+        """Switch the access point on or off. The answer goes out first: the
+        switch drops whichever network is carrying this request."""
+        action = form.get("action", [""])[0]
+        if action not in ("start", "stop"):
+            self.send_error(400)
+            return
+        on = action == "start"
+        try:
+            wifi.switch_hotspot(on)
+        except Exception as exc:  # unwritable log, missing script
+            result = f"<p class='off'>{html.escape(str(exc))}</p>"
+        else:
+            result = "<p class='on'>{msg}</p>".format(
+                msg=html.escape(
+                    i18n.t(lang, "hotspot_starting" if on else "hotspot_stopping")
+                )
+            )
+        self._wifi_page(lang, result)
+
+    def _hotspot_always(self, form: dict, lang: str):
+        try:
+            wifi.set_hotspot_always("always" in form)
+        except Exception as exc:
+            result = f"<p class='off'>{html.escape(str(exc))}</p>"
+        else:
+            result = f"<p class='on'>{html.escape(i18n.t(lang, 'saved'))}</p>"
+        self._wifi_page(lang, result)
+
+    def _setup(self, form: dict, lang: str):
+        """One wizard step: apply what it collected, then move on."""
+        try:
+            step = int(form.get("step", ["1"])[0])
+        except ValueError:
+            step = 1
+        step = max(1, min(WIZARD_STEPS, step))
+        action = form.get("action", [""])[0]
+        cfg = config.load()
+
+        if action == "scan":
+            self._send(render_wizard(step, lang, cfg, scan_result=render_scan(lang)))
+            return
+        if action not in ("next", "back", "finish", "skip"):
+            self.send_error(400)
+            return
+
+        try:
+            if action == "next" and step == 2:
+                cfg.bike_id = bike_id_of(form, cfg)
+                config.save(cfg)
+            elif action == "next" and step == 3:
+                protocols, profiles, _hint = MODES.get(
+                    form.get("mode", [""])[0], MODES["ble-cp"]
+                )
+                cfg.protocols = list(protocols)
+                cfg.ble_profiles = list(profiles)
+                config.save(cfg)
+            if action in ("finish", "skip"):
+                config.mark_setup_done()
+        except OSError as exc:  # not running as root, read-only filesystem
+            self._send(
+                render_wizard(
+                    step,
+                    lang,
+                    cfg,
+                    message=f"<p class='off'>{html.escape(str(exc))}</p>",
+                )
+            )
+            return
+
+        if action in ("finish", "skip"):
+            if action == "finish":
+                systemctl("restart", SERVICE)
+            self._redirect(lang)
+            return
+
+        self._send(
+            render_wizard(step + (1 if action == "next" else -1), lang, config.load())
+        )
 
     def _update(self, lang: str):
         """Start update.sh detached: it restarts this very service at the end."""
@@ -469,11 +777,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _save(self, form: dict, lang: str):
         cfg = config.load()
-        try:
-            bike_id = int(form.get("bike_id", [""])[0])
-        except ValueError:
-            bike_id = cfg.bike_id
-        cfg.bike_id = max(0, min(255, bike_id))
+        cfg.bike_id = bike_id_of(form, cfg)
         cfg.mock = "mock" in form
         protocols, profiles, _hint = MODES.get(
             form.get("mode", [""])[0], MODES["ble-cp"]
@@ -495,9 +799,9 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _redirect(self, lang: str):
+    def _redirect(self, lang: str, page: str = "/"):
         self.send_response(303)
-        self.send_header("Location", f"/?lang={lang}")
+        self.send_header("Location", f"{page}?lang={lang}")
         self.end_headers()
 
     def log_message(self, fmt, *args):

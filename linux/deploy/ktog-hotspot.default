@@ -1,0 +1,13 @@
+# Access point (Wi-Fi setup network) settings, read by ktog-hotspot.sh.
+# The configuration page rewrites KTOG_HOTSPOT_ALWAYS; the rest is yours.
+
+# 1 = always start the access point at boot, even when a known Wi-Fi is in
+# range. Handy at the gym, where the Pi has no network of its own.
+KTOG_HOTSPOT_ALWAYS=0
+
+# Network broadcast by the Pi. Change the password: it is public knowledge.
+KTOG_HOTSPOT_SSID=KeiserToGarmin
+KTOG_HOTSPOT_PASSWORD=keiser2garmin
+
+# Seconds to wait for a known Wi-Fi at boot before falling back to the AP.
+KTOG_HOTSPOT_WAIT=45

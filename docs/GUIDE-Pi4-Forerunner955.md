@@ -67,8 +67,16 @@ maison), il crée son propre point d'accès au bout d'environ 45 s :
 - page de configuration : http://10.42.0.1:8080/
 
 Tu t'y connectes avec le téléphone, tu saisis ton Wi-Fi, et le point d'accès
-disparaît. Pour que la page réponde ensuite sur `http://ktog.local:8080/`,
-lance l'installeur avec `--hostname ktog` (il installe aussi avahi).
+disparaît. Le bouton **Activer le point d'accès** le lance à la demande (il
+coupe alors le Wi-Fi), et la case **Toujours en point d'accès au démarrage**
+le rend systématique — pratique en salle. En ligne de commande :
+`sudo ~/keiserTOgarmin/linux/deploy/ktog-hotspot.sh --now` (ou `--off`).
+
+Si rien n'est diffusé, vérifie le pays Wi-Fi (`sudo raspi-config` →
+*Localisation* → *WLAN Country*) : sans lui la radio refuse le mode AP.
+
+Pour que la page réponde sur `http://ktog.local:8080/`, lance l'installeur avec
+`--hostname ktog` (il installe aussi avahi).
 
 L'interface n'a aucun mot de passe et peut redémarrer un service root : à
 n'exposer que sur un réseau de confiance. Pour la désactiver :

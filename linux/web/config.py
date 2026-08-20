@@ -17,6 +17,11 @@ from dataclasses import dataclass, field
 DEFAULTS_FILE = "/etc/default/freefitness"
 ARGS_RE = re.compile(r"^\s*FREEFITNESS_ARGS\s*=")
 
+# Touched when the setup wizard is finished or skipped, so a configured Pi
+# stops opening it. A file rather than a line in DEFAULTS_FILE: this is state,
+# not configuration, and it must not end up in FREEFITNESS_ARGS.
+SETUP_FLAG = "/var/lib/ktog/setup-done"
+
 
 @dataclass
 class Config:
@@ -101,3 +106,14 @@ def save(cfg: Config, path: str = DEFAULTS_FILE) -> None:
     except BaseException:
         os.unlink(tmp)
         raise
+
+
+def setup_done(path: str = SETUP_FLAG) -> bool:
+    """Has the wizard already been finished (or skipped) on this Pi?"""
+    return os.path.exists(path)
+
+
+def mark_setup_done(path: str = SETUP_FLAG) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w"):
+        pass

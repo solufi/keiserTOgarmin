@@ -100,6 +100,25 @@ STRINGS = {
         " minute.",
         "update_log": "Journal de la dernière mise à jour",
         "version": "Version",
+        "wizard_title": "Premier démarrage",
+        "wizard_link": "Revoir le tutoriel",
+        "wizard_step": "Étape {step} sur {total}",
+        "wizard_next": "Suivant",
+        "wizard_back": "Précédent",
+        "wizard_finish": "Terminer",
+        "wizard_skip": "Passer le tutoriel",
+        "wizard_skip_hint": "Va directement à la page de configuration. Le"
+        " tutoriel reste accessible par le lien en bas de cette page.",
+        "wizard_wifi_hint": "Connecte le Pi à ton Wi-Fi pour pouvoir le"
+        " retrouver sur http://ktog.local:8080/. En salle, il n'y a rien à"
+        " faire ici : le pont fonctionne sans réseau.",
+        "wizard_bike_hint": "Monte sur le Keiser, pédale quelques tours pour"
+        " réveiller la console, puis lance le scan et recopie l'ID de ton vélo.",
+        "wizard_mode_hint": "Bluetooth ne demande aucun matériel. L'ANT+"
+        " nécessite un dongle USB, mais tient mieux la connexion.",
+        "wizard_summary": "Configuration",
+        "wizard_finish_hint": "« Terminer » enregistre et redémarre le pont,"
+        " puis affiche la page de configuration.",
     },
     "en": {
         "title": "Keiser M3i → Garmin",
@@ -187,6 +206,25 @@ STRINGS = {
         "update_started": "Update started. Refresh the page in a minute.",
         "update_log": "Last update log",
         "version": "Version",
+        "wizard_title": "First run",
+        "wizard_link": "Run the tutorial again",
+        "wizard_step": "Step {step} of {total}",
+        "wizard_next": "Next",
+        "wizard_back": "Back",
+        "wizard_finish": "Finish",
+        "wizard_skip": "Skip the tutorial",
+        "wizard_skip_hint": "Goes straight to the configuration page. The"
+        " tutorial stays available from the link at the bottom of that page.",
+        "wizard_wifi_hint": "Join your Wi-Fi so the Pi can be reached on"
+        " http://ktog.local:8080/. At the gym there is nothing to do here: the"
+        " bridge works without a network.",
+        "wizard_bike_hint": "Sit on the Keiser, pedal a few turns to wake the"
+        " console up, then scan and copy your bike's ID below.",
+        "wizard_mode_hint": "Bluetooth needs no extra hardware. ANT+ needs a"
+        " USB stick, but holds the connection better.",
+        "wizard_summary": "Configuration",
+        "wizard_finish_hint": "“Finish” saves, restarts the bridge and opens"
+        " the configuration page.",
     },
 }
 

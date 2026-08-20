@@ -88,6 +88,9 @@ udevadm trigger --subsystem-match=usb || true
 if [[ $INSTALL_SERVICE -eq 1 ]]; then
     if [[ -f "$DEFAULTS_FILE" ]]; then
         echo "==> Keeping existing $DEFAULTS_FILE"
+        # Already configured: don't greet an existing user with the wizard.
+        mkdir -p /var/lib/ktog
+        touch /var/lib/ktog/setup-done
     else
         echo "==> Writing $DEFAULTS_FILE"
         install -m 0644 "$DEPLOY_DIR/freefitness.default" "$DEFAULTS_FILE"

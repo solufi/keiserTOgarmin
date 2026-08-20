@@ -484,7 +484,11 @@ class Handler(BaseHTTPRequestHandler):
     def _hotspot(self, form: dict, lang: str):
         """Switch the access point on or off. The answer goes out first: the
         switch drops whichever network is carrying this request."""
-        on = form.get("action", ["start"])[0] == "start"
+        action = form.get("action", [""])[0]
+        if action not in ("start", "stop"):
+            self.send_error(400)
+            return
+        on = action == "start"
         try:
             wifi.switch_hotspot(on)
         except Exception as exc:  # unwritable log, missing script

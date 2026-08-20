@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Installed to /etc/systemd/system/freefitness.service by install-rpi.sh,
+# Installed to /etc/systemd/system/ktog.service by install-rpi.sh,
 # which substitutes @LINUX_DIR@ and @VENV_DIR@ with the real paths.
 [Unit]
-Description=FreeFitness bike data bridge
+Description=Keiser to Garmin bike data bridge
 Documentation=https://github.com/solufi/keiserTOgarmin
 # BLE output needs a registered BlueZ adapter on the system bus.
 Requires=bluetooth.service
@@ -21,8 +21,8 @@ WorkingDirectory=@LINUX_DIR@
 # stdout is a pipe here, so Python block-buffers it and telemetry only reaches
 # the journal in 8 KiB bursts, making `journalctl -f` look dead.
 Environment=PYTHONUNBUFFERED=1
-EnvironmentFile=/etc/default/freefitness
-ExecStart=@VENV_DIR@/bin/python main.py $FREEFITNESS_ARGS
+EnvironmentFile=/etc/default/ktog
+ExecStart=@VENV_DIR@/bin/python main.py $KTOG_ARGS
 Restart=always
 RestartSec=5
 

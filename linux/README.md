@@ -1,6 +1,6 @@
 # Linux Implementation (Python)
 
-This directory contains the Python-based implementation of the FreeFitness Data Adapter, designed to run on Linux systems (PC, Raspberry Pi, etc.) using a USB ANT+ dongle and the system's Bluetooth stack.
+This directory contains the Python-based implementation of the Keiser M3i → Garmin bridge, designed to run on Linux systems (PC, Raspberry Pi, etc.) using a USB ANT+ dongle and the system's Bluetooth stack.
 
 ## Current Implementation and Similar Solutions
 
@@ -46,12 +46,12 @@ cd keiserTOgarmin
 sudo ./linux/deploy/install-rpi.sh
 ```
 
-Then set the arguments in `/etc/default/freefitness` and start it:
+Then set the arguments in `/etc/default/ktog` and start it:
 
 ```bash
-FREEFITNESS_ARGS="--bike-id 12 --protocols ant"
-sudo systemctl start freefitness
-journalctl -u freefitness -f
+KTOG_ARGS="--bike-id 12 --protocols ant"
+sudo systemctl start ktog
+journalctl -u ktog -f
 ```
 
 The installer defaults to `--mock --protocols ble`, so a fresh install can be
@@ -63,7 +63,7 @@ BlueZ over the system bus needs it, and so does the ANT+ USB reset.
 
 ### Configuration web UI
 
-The installer also enables `freefitness-web.service`, a standard-library HTTP
+The installer also enables `ktog-web.service`, a standard-library HTTP
 server on port 8080 (`web/server.py`) for changing the bike ID and the output
 protocol from a phone at the gym:
 
@@ -71,7 +71,7 @@ protocol from a phone at the gym:
 http://<pi-hostname>.local:8080/
 ```
 
-It rewrites the `FREEFITNESS_ARGS` line of `/etc/default/freefitness` and
+It rewrites the `KTOG_ARGS` line of `/etc/default/ktog` and
 restarts the bridge, so the CLI stays the source of truth and the two paths
 cannot drift. It also scans for nearby Keiser bikes and lists their IDs with
 live cadence, which is how you tell two bikes apart, and tails the journal.
@@ -98,13 +98,13 @@ even when a known network is in range: at the gym there is no network to join.
 
 Its "Update" button runs `deploy/update.sh` detached (`start_new_session=True`,
 output to `/var/log/ktog-update.log`): the script re-runs the installer and
-restarts `freefitness-web` itself, which would otherwise cut the HTTP response
+restarts `ktog-web` itself, which would otherwise cut the HTTP response
 mid-update. The page shows the tail of that log, so the result survives the
 restart.
 
 Being unauthenticated and able to restart a root service, it belongs on a
 trusted LAN only; disable it with
-`sudo systemctl disable --now freefitness-web`.
+`sudo systemctl disable --now ktog-web`.
 
 ### Choosing an output protocol on a Pi
 

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
-"""Tiny configuration UI for the FreeFitness bridge.
+"""Tiny configuration UI for the Keiser to Garmin bridge.
 
 Exists so the bike ID and the output protocol can be changed from a phone at
-the gym instead of over SSH. It edits FREEFITNESS_ARGS in
-/etc/default/freefitness and restarts freefitness.service, i.e. exactly what
+the gym instead of over SSH. It edits KTOG_ARGS in
+/etc/default/ktog and restarts ktog.service, i.e. exactly what
 the manual procedure does — so the CLI stays the source of truth and the two
 paths cannot drift.
 
@@ -29,7 +29,7 @@ import i18n
 import scan
 import wifi
 
-SERVICE = "freefitness.service"
+SERVICE = "ktog.service"
 JOURNAL_LINES = 25
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UPDATE_SCRIPT = os.path.join(REPO_ROOT, "linux", "deploy", "update.sh")
@@ -109,7 +109,7 @@ PAGE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Keiser to Garmin</title>
+<title>Keiser M3i &rarr; Garmin</title>
 <style>{style}</style>
 </head>
 <body>
@@ -169,7 +169,7 @@ WIZARD_PAGE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Keiser to Garmin</title>
+<title>Keiser M3i &rarr; Garmin</title>
 <style>{style}</style>
 </head>
 <body>
@@ -556,7 +556,7 @@ def render_wizard(
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "freefitness-web"
+    server_version = "ktog-web"
 
     def _lang(self) -> str:
         """?lang= wins, else the cookie set on the last explicit choice."""

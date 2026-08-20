@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Arguments passed to linux/main.py by the freefitness systemd service.
+# Arguments passed to linux/main.py by the ktog systemd service.
 # See `python main.py --help`.
 #
 #   --bike-id N        Keiser M3i bike ID shown on the bike's console
@@ -9,4 +9,4 @@
 #   --ant-driver TYPE  usb2 (Garmin ANT-USB / ANT-USBm) or usb1 (serial)
 #
 # Default is the simulator so a fresh install starts up without a bike.
-FREEFITNESS_ARGS="--mock --protocols ble"
+KTOG_ARGS="--mock --protocols ble"

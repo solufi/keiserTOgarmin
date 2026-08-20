@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-only
-"""Read/write the FREEFITNESS_ARGS line of /etc/default/freefitness.
+"""Read/write the KTOG_ARGS line of /etc/default/ktog.
 
 The systemd unit passes that variable verbatim to main.py, so the web UI
 speaks the same language as the command line: it parses the existing
 arguments into a Config, and renders a Config back into arguments. Comments
-in the file are preserved because only the FREEFITNESS_ARGS line is
+in the file are preserved because only the KTOG_ARGS line is
 rewritten.
 """
 
@@ -14,12 +14,12 @@ import shlex
 import tempfile
 from dataclasses import dataclass, field
 
-DEFAULTS_FILE = "/etc/default/freefitness"
-ARGS_RE = re.compile(r"^\s*FREEFITNESS_ARGS\s*=")
+DEFAULTS_FILE = "/etc/default/ktog"
+ARGS_RE = re.compile(r"^\s*KTOG_ARGS\s*=")
 
 # Touched when the setup wizard is finished or skipped, so a configured Pi
 # stops opening it. A file rather than a line in DEFAULTS_FILE: this is state,
-# not configuration, and it must not end up in FREEFITNESS_ARGS.
+# not configuration, and it must not end up in KTOG_ARGS.
 SETUP_FLAG = "/var/lib/ktog/setup-done"
 
 
@@ -81,14 +81,14 @@ def load(path: str = DEFAULTS_FILE) -> Config:
 
 
 def save(cfg: Config, path: str = DEFAULTS_FILE) -> None:
-    """Rewrite only the FREEFITNESS_ARGS line, atomically."""
+    """Rewrite only the KTOG_ARGS line, atomically."""
     try:
         with open(path) as f:
             lines = f.readlines()
     except FileNotFoundError:
         lines = []
 
-    new_line = f'FREEFITNESS_ARGS="{cfg.to_args()}"\n'
+    new_line = f'KTOG_ARGS="{cfg.to_args()}"\n'
     for i, line in enumerate(lines):
         if ARGS_RE.match(line):
             lines[i] = new_line

@@ -80,7 +80,7 @@ Pour que la page réponde sur `http://ktog.local:8080/`, lance l'installeur avec
 
 L'interface n'a aucun mot de passe et peut redémarrer un service root : à
 n'exposer que sur un réseau de confiance. Pour la désactiver :
-`sudo systemctl disable --now freefitness-web`.
+`sudo systemctl disable --now ktog-web`.
 
 ## 3. Trouver le Bike ID de ton vélo
 
@@ -106,26 +106,26 @@ Pédale sur le vélo qui t'intéresse : c'est celui dont la cadence bouge.
 ## 4. Configurer et démarrer
 
 ```bash
-sudo nano /etc/default/freefitness
+sudo nano /etc/default/ktog
 ```
 
 Remplace la ligne par (avec ton numéro), **sans dongle ANT+** :
 
 ```
-FREEFITNESS_ARGS="--bike-id 12 --protocols ble --ble-profiles cp"
+KTOG_ARGS="--bike-id 12 --protocols ble --ble-profiles cp"
 ```
 
 Ou, **avec le dongle ANT+** :
 
 ```
-FREEFITNESS_ARGS="--bike-id 12 --protocols ant"
+KTOG_ARGS="--bike-id 12 --protocols ant"
 ```
 
 Puis :
 
 ```bash
-sudo systemctl start freefitness
-journalctl -u freefitness -f
+sudo systemctl start ktog
+journalctl -u ktog -f
 ```
 
 Dès que tu pédales, tu dois voir défiler `BLE 2A63 CP | pwr 143 W | ...` (ou
@@ -163,8 +163,8 @@ plantage. Tu branches le Pi, tu attends ~30 s, tu lances la séance vélo sur la
 montre, tu pédales.
 
 Seul cas nécessitant une intervention : changer de vélo dans la salle (bike ID
-différent) → édite `/etc/default/freefitness` et
-`sudo systemctl restart freefitness`.
+différent) → édite `/etc/default/ktog` et
+`sudo systemctl restart ktog`.
 
 ## 7. Dépannage
 
@@ -179,7 +179,7 @@ différent) → édite `/etc/default/freefitness` et
 | Vitesse/distance farfelues | Circonférence de roue ≠ 2096 mm. |
 | Le journal reste vide alors que le service tourne | Après un `git pull` qui touche `deploy/`, relance `sudo ./linux/deploy/install-rpi.sh` : le fichier de service installé dans `/etc/systemd/system/` n'est pas mis à jour par `git pull`. |
 | La session SSH coupe pendant l'install | Lance le script dans `tmux` (`tmux new -s ff`, puis `tmux attach -t ff` après reconnexion). Il est ré-exécutable sans rien casser. |
-| Le service échoue au boot | `journalctl -u freefitness -b` ; si l'erreur mentionne Python 3.9/3.10, ton OS est trop vieux (Bookworm requis). |
+| Le service échoue au boot | `journalctl -u ktog -b` ; si l'erreur mentionne Python 3.9/3.10, ton OS est trop vieux (Bookworm requis). |
 
 ## Ce qui n'a pas été testé
 

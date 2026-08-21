@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-only
 #
-# One-shot installer for the FreeFitness Linux bridge on a Raspberry Pi
+# One-shot installer for the Keiser to Garmin Linux bridge on a Raspberry Pi
 # (or any Debian/Ubuntu based SBC). Installs system packages, builds a
 # virtualenv, and registers the systemd service + ANT+ udev rule.
 #
@@ -31,7 +31,7 @@ LINUX_DIR="$REPO_ROOT/linux"
 DEPLOY_DIR="$LINUX_DIR/deploy"
 VENV_DIR="$REPO_ROOT/.venv"
 PYTHON="${PYTHON:-python3}"
-DEFAULTS_FILE="/etc/default/freefitness"
+DEFAULTS_FILE="/etc/default/ktog"
 UNIT_DIR="/etc/systemd/system"
 UDEV_FILE="/etc/udev/rules.d/99-ant-usb.rules"
 
@@ -86,6 +86,23 @@ udevadm control --reload-rules
 udevadm trigger --subsystem-match=usb || true
 
 if [[ $INSTALL_SERVICE -eq 1 ]]; then
+    # Installs made before the freefitness -> ktog rename: carry the settings
+    # over and drop the old units, otherwise two bridges fight for the radio.
+    if [[ -f /etc/default/freefitness && ! -f "$DEFAULTS_FILE" ]]; then
+        echo "==> Migrating /etc/default/freefitness to $DEFAULTS_FILE"
+        sed 's/^\([[:space:]]*\)FREEFITNESS_ARGS=/\1KTOG_ARGS=/' \
+            /etc/default/freefitness > "$DEFAULTS_FILE"
+        chmod 0644 "$DEFAULTS_FILE"
+        mv /etc/default/freefitness /etc/default/freefitness.pre-ktog
+    fi
+    for old in freefitness.service freefitness-web.service; do
+        if [[ -f "$UNIT_DIR/$old" ]]; then
+            echo "==> Removing the old $old"
+            systemctl disable --now "$old" || true
+            rm -f "$UNIT_DIR/$old"
+        fi
+    done
+
     if [[ -f "$DEFAULTS_FILE" ]]; then
         echo "==> Keeping existing $DEFAULTS_FILE"
         # Already configured: don't greet an existing user with the wizard.
@@ -93,12 +110,12 @@ if [[ $INSTALL_SERVICE -eq 1 ]]; then
         touch /var/lib/ktog/setup-done
     else
         echo "==> Writing $DEFAULTS_FILE"
-        install -m 0644 "$DEPLOY_DIR/freefitness.default" "$DEFAULTS_FILE"
+        install -m 0644 "$DEPLOY_DIR/ktog.default" "$DEFAULTS_FILE"
     fi
 
     echo "==> Installing systemd units"
     chmod 0755 "$DEPLOY_DIR/ktog-hotspot.sh"
-    for template in freefitness.service freefitness-web.service ktog-hotspot.service; do
+    for template in ktog.service ktog-web.service ktog-hotspot.service; do
         sed -e "s|@LINUX_DIR@|$LINUX_DIR|g" \
             -e "s|@VENV_DIR@|$VENV_DIR|g" \
             -e "s|@DEPLOY_DIR@|$DEPLOY_DIR|g" \
@@ -106,8 +123,8 @@ if [[ $INSTALL_SERVICE -eq 1 ]]; then
         chmod 0644 "$UNIT_DIR/$template"
     done
     systemctl daemon-reload
-    systemctl enable freefitness.service
-    systemctl enable --now freefitness-web.service
+    systemctl enable ktog.service
+    systemctl enable --now ktog-web.service
 
     # The fallback access point is pointless without NetworkManager (older Pi
     # OS images still use dhcpcd/wpa_supplicant).
@@ -133,7 +150,7 @@ if [[ $INSTALL_SERVICE -eq 1 ]]; then
         echo "The page can also raise it on demand, or always at boot"
         echo "(KTOG_HOTSPOT_ALWAYS in /etc/default/ktog-hotspot)."
     fi
-    echo "or edit $DEFAULTS_FILE by hand, then:  sudo systemctl start freefitness"
+    echo "or edit $DEFAULTS_FILE by hand, then:  sudo systemctl start ktog"
 fi
 
 cat <<EOF
@@ -144,5 +161,5 @@ Quick check without a bike (simulated power, BLE output):
     cd $LINUX_DIR && sudo $VENV_DIR/bin/python main.py --mock --protocols ble
 
 Logs once the service runs:
-    journalctl -u freefitness -f
+    journalctl -u ktog -f
 EOF

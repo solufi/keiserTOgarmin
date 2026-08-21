@@ -48,7 +48,7 @@ fi
 
 echo "==> Revision after pull: $(git rev-parse --short HEAD)"
 
-# The installer is idempotent and keeps /etc/default/freefitness, so it is also
+# The installer is idempotent and keeps /etc/default/ktog, so it is also
 # the update path: it refreshes the venv and rewrites the systemd units, which
 # a plain "git pull" cannot do.
 echo "==> Running the installer"
@@ -58,9 +58,9 @@ if ! ./linux/deploy/install-rpi.sh; then
 fi
 
 echo "==> Restarting services"
-systemctl restart freefitness.service || true
+systemctl restart ktog.service || true
 # Last: this kills the page that started the update. The browser reconnects on
 # the next refresh and this log is what it displays.
-systemctl restart freefitness-web.service
+systemctl restart ktog-web.service
 
 echo "==> Update finished"
